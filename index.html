@@ -316,20 +316,23 @@
     font-size:13px; color:var(--muted); line-height:1.6;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
   }
-  .progress-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-family: sans-serif;
-  width: 100%;
-  max-width: 400px;
-}
-
-#progressBar {
-  flex-grow: 1;
-  cursor: pointer;
-}
   .note b{color:var(--text);}
+
+  .progress-container{
+    display:flex; align-items:center; gap:10px;
+    width:100%; margin-top:16px; font-size:12px; color:var(--muted);
+  }
+  .progress-container input[type=range]{
+    flex:1; -webkit-appearance:none; height:6px; border-radius:3px;
+    background:var(--bg-elev-2); outline:none; cursor:pointer;
+    border: 1px solid var(--line);
+  }
+  .progress-container input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+    background:var(--blue-neon); cursor:pointer;
+    box-shadow: 0 0 8px var(--blue-neon);
+  }
+  .progress-container span{flex-shrink:0; min-width:32px; font-variant-numeric:tabular-nums;}
 
   #hiddenPlayers{position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden;}
 
@@ -351,7 +354,7 @@
 
     <div class="field">
       <label>Tên đăng nhập</label>
-      <input id="inpUser" type="text" placeholder="vd: thien音乐" autocomplete="off">
+      <input id="inpUser" type="text" placeholder="vd: thienmusic" autocomplete="off">
       <div class="hint">Chỉ chữ không dấu và số, viết liền, không khoảng trắng (3–20 ký tự). Có thể viết hoa.</div>
       <div class="err" id="errUser"></div>
     </div>
@@ -414,6 +417,12 @@
         <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4h4l5 5V5L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
         <input type="range" id="volSlider" min="0" max="100" value="70">
       </div>
+
+      <div class="progress-container" id="progressWrap" style="display:none">
+        <span id="curTimeLabel">0:00</span>
+        <input type="range" id="progressBar" min="0" max="100" value="0">
+        <span id="durLabel">0:00</span>
+      </div>
     </div>
 
     <div class="playlistsBar">
@@ -466,29 +475,39 @@
     return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
   function escUrlForOembed(url){ return encodeURIComponent(url); }
+  function formatTime(seconds){
+    if(!isFinite(seconds) || seconds < 0) seconds = 0;
+    let min = Math.floor(seconds / 60);
+    let sec = Math.floor(seconds % 60);
+    if(sec < 10) sec = "0" + sec;
+    return min + ":" + sec;
+  }
 
-  async function storeGet(key){
+  function storeGet(key){
     try {
       const val = localStorage.getItem(key);
       return val ? JSON.parse(val) : null;
     } catch(e) { return null; }
   }
-  async function storeSet(key, value){
+  function storeSet(key, value){
     try {
       localStorage.setItem(key, JSON.stringify(value));
       return true;
     } catch(e) { console.error("localStorage set failed", e); return null; }
   }
 
+  const eyeOpenPath = 'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z';
+  const eyeClosedPath = 'M12 7c-2.76 0-5 2.24-5 5 0 .65.13 1.26.36 1.82l2.92-2.92c-.17-.29-.28-.63-.28-.9 0-1.1.9-2 2-2 .27 0 .61.11.9.28l2.92-2.92C13.26 7.13 12.65 7 12 7zm0 10c2.76 0 5-2.24 5-5 0-.65-.13-1.26-.36-1.82l-2.92 2.92c.17.29.28.63.28.9 0 1.1-.9 2-2 2-.27 0-.61-.11-.9-.28l-2.92 2.92c.56.23 1.17.36 1.82.36zm0-12.5C7 4.5 2.73 7.61 1 12c1.41 3.58 4.67 6.27 8.55 7l2.2-2.2C8.61 16.32 5.92 14.28 4.61 12c1.61-3.69 5.51-6 9.39-6 .67 0 1.34.07 1.99.2l1.65-1.65C15.93 4.75 14 4.5 12 4.5zM22.46 4L21 2.54 2.46 21.08 3.92 22.54 7.6 18.86l1.66-1.66 8.35-8.35 1.66-1.66 3.19-3.19z';
+
   $("btnTogglePass").addEventListener("click", () => {
     const passInput = $("inpPass");
     const eyeIcon = $("eyeIcon");
     if (passInput.type === "password") {
       passInput.type = "text";
-      eyeIcon.innerHTML = `<path d="M12 7c-2.76 0-5 2.24-5 5 0 .65.13 1.26.36 1.82l2.92-2.92c-.17-.29-.28-.63-.28-.9 0-1.1.9-2 2-2 .27 0 .61.11.9.28l2.92-2.92C13.26 7.13 12.65 7 12 7zm0 10c2.76 0 5-2.24 5-5 0-.65-.13-1.26-.36-1.82l-2.92 2.92c.17.29.28.63.28.9 0 1.1-.9 2-2 2-.27 0-.61-.11-.9-.28l-2.92 2.92c.56.23 1.17.36 1.82.36zm0-12.5C7 4.5 2.73 7.61 1 12c1.41 3.58 4.67 6.27 8.55 7l2.2-2.2C8.61 16.32 5.92 14.28 4.61 12c1.61-3.69 5.51-6 9.39-6 .67 0 1.34.07 1.99.2l1.65-1.65C15.93 4.75 14 4.5 12 4.5zM22.46 4L21 2.54 2.46 21.08 3.92 22.54 7.6 18.86l1.66-1.66 8.35-8.35 1.66-1.66 3.19-3.19z"/>`;
+      eyeIcon.innerHTML = '<path d="' + eyeClosedPath + '"/>';
     } else {
       passInput.type = "password";
-      eyeIcon.innerHTML = `<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5 0-5 2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>`;
+      eyeIcon.innerHTML = '<path d="' + eyeOpenPath + '"/>';
     }
   });
 
@@ -520,8 +539,8 @@
     $("errUser").classList.remove("show");
     $("errPass").classList.remove("show");
     $("inpPass").type = "password";
-    $("eyeIcon").innerHTML = `<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5 0-5 2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>`;
-    
+    $("eyeIcon").innerHTML = '<path d="' + eyeOpenPath + '"/>';
+
     if(mode === "login"){
       $("authSubText").textContent = "Đăng nhập để lưu danh sách phát của riêng bạn.";
       $("btnSubmitAuth").textContent = "Đăng nhập";
@@ -536,8 +555,7 @@
   }
   $("linkToRegister").onclick = () => setAuthMode("register");
 
-  // NÂNG CẤP: Đăng ký xong tự đăng nhập ngay, không yêu cầu điền lại gì cả
-  $("btnSubmitAuth").addEventListener("click", async () => {
+  $("btnSubmitAuth").addEventListener("click", () => {
     const uname = $("inpUser").value.trim();
     const pass = $("inpPass").value;
     let ok = true;
@@ -559,17 +577,15 @@
     if(!ok) return;
 
     const key = "account:" + uname.toLowerCase();
-    const existing = await storeGet(key);
+    const existing = storeGet(key);
 
     if(authMode === "register"){
       if(existing){
         $("authMsg").textContent = "Tên đăng nhập đã tồn tại, hãy chọn tên khác.";
         return;
       }
-      // Lưu tài khoản mới
-      await storeSet(key, { username: uname, passwordHash: hash(pass) });
-      // Tự động tạo phiên hoạt động -> Đăng nhập luôn!
-      await storeSet("session:current", { username: uname });
+      storeSet(key, { username: uname, passwordHash: hash(pass) });
+      storeSet("session:current", { username: uname });
       currentUser = uname;
       enterApp();
     } else {
@@ -577,14 +593,14 @@
         $("authMsg").textContent = "Tên đăng nhập hoặc mật khẩu không đúng.";
         return;
       }
-      await storeSet("session:current", { username: existing.username });
+      storeSet("session:current", { username: existing.username });
       currentUser = existing.username;
       enterApp();
     }
   });
 
-  $("btnLogout").addEventListener("click", async () => {
-    await storeSet("session:current", { username: null });
+  $("btnLogout").addEventListener("click", () => {
+    storeSet("session:current", { username: null });
     currentUser = null;
     stopEverything();
     $("appScreen").classList.remove("active");
@@ -599,6 +615,7 @@
   let currentIndex = -1;
   let loopMode = "off";
   let isPlaying = false;
+  let progressTimer = null;
 
   function getActivePlaylist(){
     return playlists.find(p => p.id === activePlaylistId) || null;
@@ -608,8 +625,8 @@
     return pl ? pl.tracks : [];
   }
 
-  async function loadUserData(){
-    const data = await storeGet("playlists:" + currentUser.toLowerCase());
+  function loadUserData(){
+    const data = storeGet("playlists:" + currentUser.toLowerCase());
     if(data && Array.isArray(data.playlists) && data.playlists.length > 0){
       playlists = data.playlists;
       activePlaylistId = data.activeId && playlists.some(p=>p.id===data.activeId) ? data.activeId : playlists[0].id;
@@ -618,10 +635,10 @@
     const pl = { id: genId(), name: "Danh sách của tôi", tracks: [] };
     playlists = [pl];
     activePlaylistId = pl.id;
-    await saveUserData();
+    saveUserData();
   }
-  async function saveUserData(){
-    await storeSet("playlists:" + currentUser.toLowerCase(), { playlists, activeId: activePlaylistId });
+  function saveUserData(){
+    storeSet("playlists:" + currentUser.toLowerCase(), { playlists, activeId: activePlaylistId });
   }
 
   function renderPlaylistTabs(){
@@ -646,9 +663,9 @@
       });
     });
     wrap.querySelectorAll(".plTabDel").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        await deletePlaylist(btn.dataset.plid);
+        deletePlaylist(btn.dataset.plid);
       });
     });
   }
@@ -679,13 +696,13 @@
     nameEl.addEventListener("blur", () => finish(true));
   }
 
-  async function switchPlaylist(plid){
+  function switchPlaylist(plid){
     if(plid === activePlaylistId) return;
     stopEverything();
     currentIndex = -1;
     updateNowPlaying(null);
     activePlaylistId = plid;
-    await saveUserData();
+    saveUserData();
     renderPlaylistTabs();
     renderPlaylist();
   }
@@ -696,8 +713,9 @@
   });
   $("btnCancelNewPl").addEventListener("click", () => $("newPlRow").classList.remove("show"));
   $("btnConfirmNewPl").addEventListener("click", createNewPlaylist);
+  $("inpNewPlName").addEventListener("keydown", e => { if(e.key === "Enter") createNewPlaylist(); });
 
-  async function createNewPlaylist(){
+  function createNewPlaylist(){
     const name = $("inpNewPlName").value.trim();
     if(!name) return;
     const pl = { id: genId(), name, tracks: [] };
@@ -705,13 +723,14 @@
     activePlaylistId = pl.id;
     currentIndex = -1;
     updateNowPlaying(null);
-    await saveUserData();
+    saveUserData();
     renderPlaylistTabs();
     renderPlaylist();
+    $("inpNewPlName").value = "";
     $("newPlRow").classList.remove("show");
   }
 
-  async function deletePlaylist(plid){
+  function deletePlaylist(plid){
     if(playlists.length <= 1) return;
     const wasActive = plid === activePlaylistId;
     playlists = playlists.filter(p => p.id !== plid);
@@ -721,7 +740,7 @@
       updateNowPlaying(null);
       activePlaylistId = playlists[0].id;
     }
-    await saveUserData();
+    saveUserData();
     renderPlaylistTabs();
     renderPlaylist();
   }
@@ -737,35 +756,6 @@
       empty.style.display = "block";
       return;
     }
-    const audio = document.getElementById('myAudio');
-const progressBar = document.getElementById('progressBar');
-const currentTimeTrack = document.getElementById('currentTime');
-const durationTrack = document.getElementById('duration');
-
-// Hàm biến đổi số giây thành định dạng Phút:Giây (Ví dụ: 75 giây -> 1:15)
-function formatTime(seconds) {
-  let min = Math.floor(seconds / 60);
-  let sec = Math.floor(seconds % 60);
-  if (sec < 10) sec = `0${sec}`;
-  return `${min}:${sec}`;
-}
-
-// 1. Cập nhật tổng thời lượng khi nhạc được tải xong
-audio.addEventListener('loadedmetadata', () => {
-  progressBar.max = audio.duration;
-  durationTrack.textContent = formatTime(audio.duration);
-});
-
-// 2. Cập nhật thanh thời gian và số giây hiển thị khi nhạc đang chạy
-audio.addEventListener('timeupdate', () => {
-  progressBar.value = audio.currentTime;
-  currentTimeTrack.textContent = formatTime(audio.currentTime);
-});
-
-// 3. Xử lý khi người dùng tua nhạc (kéo hoặc click vào thanh bar)
-progressBar.addEventListener('input', () => {
-  audio.currentTime = progressBar.value;
-});
     empty.style.display = "none";
     list.innerHTML = tracks.map((t, i) => `
       <div class="plItem ${i===currentIndex?'active':''}" data-idx="${i}">
@@ -781,15 +771,6 @@ progressBar.addEventListener('input', () => {
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
         </button>
       </div>
-      <!-- Thẻ audio của bạn -->
-<audio id="myAudio" src="duong-dan-bai-hat.mp3"></audio>
-
-<!-- Bộ điều khiển thời gian -->
-<div class="progress-container">
-  <span id="currentTime">0:00</span>
-  <input type="range" id="progressBar" value="0" max="100">
-  <span id="duration">0:00</span>
-</div>
     `).join("");
 
     list.querySelectorAll(".plItem").forEach(el => {
@@ -799,7 +780,7 @@ progressBar.addEventListener('input', () => {
       });
     });
     list.querySelectorAll("[data-del]").forEach(btn => {
-      btn.addEventListener("click", async (e) => {
+      btn.addEventListener("click", (e) => {
         e.stopPropagation();
         const idx = parseInt(btn.dataset.del, 10);
         const tr = getActiveTracks();
@@ -807,7 +788,7 @@ progressBar.addEventListener('input', () => {
         tr.splice(idx, 1);
         if(wasCurrent){ stopEverything(); currentIndex = -1; updateNowPlaying(null); }
         else if(idx < currentIndex) currentIndex--;
-        await saveUserData();
+        saveUserData();
         renderPlaylist();
       });
     });
@@ -861,7 +842,7 @@ progressBar.addEventListener('input', () => {
         if(res.ok){ const d = await res.json(); if(d.title) title = d.title; }
       }catch(e){}
       tracks.push({ type:"youtube", id, title, url: raw });
-      await saveUserData();
+      saveUserData();
       renderPlaylist();
       $("inpLink").value = "";
     } else if(raw.includes("spotify")){
@@ -873,7 +854,7 @@ progressBar.addEventListener('input', () => {
         if(res.ok){ const d = await res.json(); if(d.title) title = d.title; }
       }catch(e){}
       tracks.push({ type:"spotify", id, title, url: raw });
-      await saveUserData();
+      saveUserData();
       renderPlaylist();
       $("inpLink").value = "";
     } else {
@@ -896,9 +877,9 @@ progressBar.addEventListener('input', () => {
     });
   };
   function onYtStateChange(e){
-    if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; updatePlayIcon(); }
-    if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; updatePlayIcon(); }
-    if(e.data === YT.PlayerState.ENDED){ handleTrackEnd(); }
+    if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; updatePlayIcon(); startProgressTimer(); }
+    if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; updatePlayIcon(); stopProgressTimer(); }
+    if(e.data === YT.PlayerState.ENDED){ stopProgressTimer(); handleTrackEnd(); }
   }
 
   let spController = null, spReady = false, spWasPlaying = false, spEndHandled = false;
@@ -913,6 +894,7 @@ progressBar.addEventListener('input', () => {
         const { isPaused, position, duration } = e.data;
         isPlaying = !isPaused;
         updatePlayIcon();
+        updateProgressUI(position/1000, duration/1000);
         if(!isPaused) { spWasPlaying = true; spEndHandled = false; }
         if(spWasPlaying && duration > 0 && position >= duration - 400 && isPaused && !spEndHandled){
           spEndHandled = true;
@@ -924,6 +906,7 @@ progressBar.addEventListener('input', () => {
 
   function stopEverything(){
     isPlaying = false;
+    stopProgressTimer();
     if(ytReady && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
     if(spReady && spController) spController.pause();
     updatePlayIcon();
@@ -939,28 +922,65 @@ progressBar.addEventListener('input', () => {
     if(!track){
       $("npTitle").textContent = "Chưa chọn bài nào";
       $("npSource").innerHTML = "";
+      $("progressWrap").style.display = "none";
       return;
     }
     $("npTitle").textContent = track.title;
     $("npSource").innerHTML = `<span class="srcTag ${track.type==='youtube'?'yt':'sp'}">${track.type==='youtube'?'YouTube':'Spotify'}</span>`;
+    $("progressWrap").style.display = "flex";
   }
+
+  function updateProgressUI(current, duration){
+    const bar = $("progressBar");
+    if(duration > 0){ bar.max = duration; bar.value = current; }
+    $("curTimeLabel").textContent = formatTime(current);
+    $("durLabel").textContent = formatTime(duration);
+  }
+
+  function startProgressTimer(){
+    stopProgressTimer();
+    progressTimer = setInterval(() => {
+      const tracks = getActiveTracks();
+      const track = tracks[currentIndex];
+      if(track && track.type === "youtube" && ytReady && ytPlayer && ytPlayer.getCurrentTime){
+        updateProgressUI(ytPlayer.getCurrentTime(), ytPlayer.getDuration());
+      }
+    }, 500);
+  }
+  function stopProgressTimer(){
+    if(progressTimer){ clearInterval(progressTimer); progressTimer = null; }
+  }
+
+  $("progressBar").addEventListener("input", () => {
+    const tracks = getActiveTracks();
+    const track = tracks[currentIndex];
+    if(!track) return;
+    const t = parseFloat($("progressBar").value);
+    if(track.type === "youtube" && ytReady && ytPlayer && ytPlayer.seekTo){
+      ytPlayer.seekTo(t, true);
+    } else if(track.type === "spotify" && spReady && spController && spController.seek){
+      spController.seek(t);
+    }
+  });
 
   function playIndex(i){
     const tracks = getActiveTracks();
     if(i < 0 || i >= tracks.length) return;
     if(ytReady && ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
     if(spReady && spController) spController.pause();
+    stopProgressTimer();
 
     currentIndex = i;
     const track = tracks[i];
     updateNowPlaying(track);
+    updateProgressUI(0, 0);
     renderPlaylist();
 
     if(track.type === "youtube"){
       if(!ytReady){ setTimeout(()=>playIndex(i), 400); return; }
       ytPlayer.loadVideoById(track.id);
       ytPlayer.setVolume(parseInt($("volSlider").value,10));
-      isPlaying = true; updatePlayIcon();
+      isPlaying = true; updatePlayIcon(); startProgressTimer();
     } else {
       if(!spReady){ setTimeout(()=>playIndex(i), 400); return; }
       spEndHandled = false; spWasPlaying = false;
@@ -1023,20 +1043,20 @@ progressBar.addEventListener('input', () => {
     if(spReady && spController && spController.setVolume) spController.setVolume(v/100);
   });
 
-  async function enterApp(){
+  function enterApp(){
     $("userNameLabel").textContent = currentUser;
     $("authScreen").classList.remove("active");
     $("appScreen").classList.add("active");
-    await loadUserData();
+    loadUserData();
     renderPlaylistTabs();
     renderPlaylist();
   }
 
-  async function boot(){
-    const session = await storeGet("session:current");
+  function boot(){
+    const session = storeGet("session:current");
     if(session && session.username){
-      const acc = await storeGet("account:" + session.username.toLowerCase());
-      if(acc){ currentUser = acc.username; await enterApp(); return; }
+      const acc = storeGet("account:" + session.username.toLowerCase());
+      if(acc){ currentUser = acc.username; enterApp(); return; }
     }
     setAuthMode("login");
   }
