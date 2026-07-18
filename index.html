@@ -316,6 +316,19 @@
     font-size:13px; color:var(--muted); line-height:1.6;
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
   }
+  .progress-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: sans-serif;
+  width: 100%;
+  max-width: 400px;
+}
+
+#progressBar {
+  flex-grow: 1;
+  cursor: pointer;
+}
   .note b{color:var(--text);}
 
   #hiddenPlayers{position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden;}
@@ -724,6 +737,35 @@
       empty.style.display = "block";
       return;
     }
+    const audio = document.getElementById('myAudio');
+const progressBar = document.getElementById('progressBar');
+const currentTimeTrack = document.getElementById('currentTime');
+const durationTrack = document.getElementById('duration');
+
+// Hàm biến đổi số giây thành định dạng Phút:Giây (Ví dụ: 75 giây -> 1:15)
+function formatTime(seconds) {
+  let min = Math.floor(seconds / 60);
+  let sec = Math.floor(seconds % 60);
+  if (sec < 10) sec = `0${sec}`;
+  return `${min}:${sec}`;
+}
+
+// 1. Cập nhật tổng thời lượng khi nhạc được tải xong
+audio.addEventListener('loadedmetadata', () => {
+  progressBar.max = audio.duration;
+  durationTrack.textContent = formatTime(audio.duration);
+});
+
+// 2. Cập nhật thanh thời gian và số giây hiển thị khi nhạc đang chạy
+audio.addEventListener('timeupdate', () => {
+  progressBar.value = audio.currentTime;
+  currentTimeTrack.textContent = formatTime(audio.currentTime);
+});
+
+// 3. Xử lý khi người dùng tua nhạc (kéo hoặc click vào thanh bar)
+progressBar.addEventListener('input', () => {
+  audio.currentTime = progressBar.value;
+});
     empty.style.display = "none";
     list.innerHTML = tracks.map((t, i) => `
       <div class="plItem ${i===currentIndex?'active':''}" data-idx="${i}">
@@ -739,6 +781,15 @@
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
         </button>
       </div>
+      <!-- Thẻ audio của bạn -->
+<audio id="myAudio" src="duong-dan-bai-hat.mp3"></audio>
+
+<!-- Bộ điều khiển thời gian -->
+<div class="progress-container">
+  <span id="currentTime">0:00</span>
+  <input type="range" id="progressBar" value="0" max="100">
+  <span id="duration">0:00</span>
+</div>
     `).join("");
 
     list.querySelectorAll(".plItem").forEach(el => {
