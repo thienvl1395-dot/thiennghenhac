@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sóng — nghe nhạc chỉ âm thanh</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0d12;
+    --bg-elev:#12161f;
+    --bg-elev-2:#191f2b;
+    --line: rgba(255,255,255,0.08);
+    --text:#eaf0f2;
+    --muted:#8791a0;
+    --mint:#33ffc7;
+    --mint-dim: rgba(51,255,199,0.14);
+    --coral:#ff6b4a;
+    --coral-dim: rgba(255,107,74,0.14);
+    --radius: 14px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    background:
+      radial-gradient(60% 50% at 85% -10%, rgba(51,255,199,0.08), transparent 60%),
+      radial-gradient(50% 40% at 5% 0%, rgba(255,107,74,0.06), transparent 60%),
+      var(--bg);
+    color:var(--text);
+    font-family:'Inter', sans-serif;
+    -webkit-font-smoothing:antialiased;
+    min-height:100%;
+  }
+  h1,h2,h3,.display{font-family:'Space Grotesk', sans-serif;}
+  .mono{font-family:'JetBrains Mono', monospace;}
+  button{font-family:inherit;}
+  ::selection{background:var(--mint-dim);}
+
+  #authScreen, #appScreen{
+    min-height:100vh;
+    display:none;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  #authScreen.active, #appScreen.active{display:flex;}
+  #appScreen{align-items:flex-start; padding-top:48px;}
+
+  .wave-mark{display:flex; align-items:flex-end; gap:3px; height:22px;}
+  .wave-mark span{
+    width:4px; background:var(--mint); border-radius:2px;
+    animation: waveIdle 2.2s ease-in-out infinite;
+  }
+  .wave-mark span:nth-child(1){height:8px; animation-delay:0s;}
+  .wave-mark span:nth-child(2){height:18px; animation-delay:.15s;}
+  .wave-mark span:nth-child(3){height:12px; animation-delay:.3s;}
+  .wave-mark span:nth-child(4){height:20px; animation-delay:.45s;}
+  .wave-mark span:nth-child(5){height:9px; animation-delay:.6s;}
+  @keyframes waveIdle{
+    0%,100%{transform:scaleY(0.5); opacity:.6;}
+    50%{transform:scaleY(1); opacity:1;}
+  }
+  .wave-mark.playing span{animation-duration:.9s;}
+  .wave-mark.paused span{animation-play-state:paused; transform:scaleY(0.35); opacity:.4;}
+
+  .authCard{
+    width:100%; max-width:380px;
+    background:var(--bg-elev);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:32px 28px;
+  }
+  .authHead{display:flex; align-items:center; gap:12px; margin-bottom:6px;}
+  .authHead .brand{font-size:20px; font-weight:600; letter-spacing:0.2px;}
+  .authSub{color:var(--muted); font-size:13px; margin:0 0 26px; line-height:1.5;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:12px; color:var(--muted); margin-bottom:6px; letter-spacing:.3px;}
+  .field input{
+    width:100%; padding:11px 12px; border-radius:9px;
+    border:1px solid var(--line); background:var(--bg-elev-2);
+    color:var(--text); font-size:14px; outline:none;
+    transition:border-color .15s;
+  }
+  .field input:focus{border-color:var(--mint);}
+  .field .hint{font-size:11px; color:var(--muted); margin-top:5px;}
+  .field .err{font-size:11.5px; color:var(--coral); margin-top:5px; display:none;}
+  .field .err.show{display:block;}
+
+  .btnPrimary{
+    width:100%; padding:12px; border:none; border-radius:9px;
+    background:var(--mint); color:#04140e; font-weight:600; font-size:14px;
+    cursor:pointer; transition:transform .1s, filter .15s;
+  }
+  .btnPrimary:hover{filter:brightness(1.08);}
+  .btnPrimary:active{transform:scale(.98);}
+
+  .switchAuth{text-align:center; margin-top:16px; font-size:13px; color:var(--muted);}
+  .switchAuth a{color:var(--mint); cursor:pointer; text-decoration:none;}
+  .authMsg{font-size:12.5px; color:var(--coral); text-align:center; min-height:16px; margin-top:10px;}
+
+  .appWrap{width:100%; max-width:640px; margin:0 auto; padding:0 16px 60px;}
+  .topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:22px;}
+  .topbar .brand{display:flex; align-items:center; gap:10px; font-weight:600; font-size:17px;}
+  .userChip{display:flex; align-items:center; gap:10px; font-size:13px; color:var(--muted);}
+  .userChip b{color:var(--text); font-weight:500;}
+  .logoutBtn{
+    background:none; border:1px solid var(--line); color:var(--muted);
+    padding:6px 12px; border-radius:20px; font-size:12px; cursor:pointer;
+  }
+  .logoutBtn:hover{color:var(--text); border-color:var(--mint);}
+
+  .nowPlaying{
+    background:linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
+    border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px; margin-bottom:20px;
+  }
+  .npTop{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
+  .npLabel{font-size:11px; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase;}
+  .npTitle{font-size:19px; font-weight:600; margin:6px 0 2px; line-height:1.3; word-break:break-word;}
+  .npSource{font-size:12px; color:var(--muted); display:flex; align-items:center; gap:6px;}
+  .srcTag{
+    font-size:10.5px; padding:2px 7px; border-radius:20px; letter-spacing:.3px;
+    border:1px solid var(--line); color:var(--muted);
+  }
+  .srcTag.yt{color:#ff6b4a; border-color:rgba(255,107,74,.35);}
+  .srcTag.sp{color:#33ffc7; border-color:rgba(51,255,199,.35);}
+
+  .controls{display:flex; align-items:center; justify-content:center; gap:18px; margin-top:20px;}
+  .ctrlBtn{
+    background:none; border:none; color:var(--text); cursor:pointer;
+    display:flex; align-items:center; justify-content:center;
+    width:40px; height:40px; border-radius:50%;
+    transition:background .15s, color .15s;
+  }
+  .ctrlBtn:hover{background:var(--bg-elev-2);}
+  .ctrlBtn.play{
+    width:56px; height:56px; background:var(--mint); color:#04140e;
+  }
+  .ctrlBtn.play:hover{background:var(--mint); filter:brightness(1.08);}
+  .ctrlBtn.loopActive{color:var(--mint);}
+  .ctrlBtn.loopOneActive{color:var(--coral);}
+  .ctrlBtn svg{width:20px; height:20px;}
+  .ctrlBtn.play svg{width:24px; height:24px;}
+
+  .volRow{display:flex; align-items:center; gap:10px; margin-top:18px;}
+  .volRow svg{width:16px; height:16px; color:var(--muted); flex-shrink:0;}
+  .volRow input[type=range]{
+    flex:1; -webkit-appearance:none; height:4px; border-radius:2px;
+    background:var(--line); outline:none;
+  }
+  .volRow input[type=range]::-webkit-slider-thumb{
+    -webkit-appearance:none; width:13px; height:13px; border-radius:50%;
+    background:var(--mint); cursor:pointer;
+  }
+
+  .playlistsBar{margin-bottom:16px;}
+  .plTabsRow{display:flex; align-items:center; gap:8px;}
+  .plTabs{
+    display:flex; gap:8px; overflow-x:auto; flex:1; padding-bottom:4px;
+    scrollbar-width:thin;
+  }
+  .plTabs::-webkit-scrollbar{height:5px;}
+  .plTabs::-webkit-scrollbar-thumb{background:var(--line); border-radius:3px;}
+  .plTab{
+    display:flex; align-items:center; gap:7px; flex-shrink:0;
+    padding:8px 10px 8px 14px; border-radius:20px; border:1px solid var(--line);
+    background:var(--bg-elev); cursor:pointer; font-size:13px; white-space:nowrap;
+    transition:border-color .15s, background .15s;
+  }
+  .plTab:hover{border-color:rgba(51,255,199,.4);}
+  .plTab.active{background:var(--mint-dim); border-color:var(--mint); color:var(--mint);}
+  .plTab .plTabName{outline:none;}
+  .plTab .plTabName[contenteditable="true"]{
+    background:var(--bg-elev-2); padding:1px 5px; border-radius:5px; color:var(--text);
+  }
+  .plTabDel{
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    width:18px; height:18px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-size:14px; line-height:1; flex-shrink:0;
+  }
+  .plTabDel:hover{color:var(--coral); background:var(--coral-dim);}
+  .newPlBtn{
+    flex-shrink:0; padding:8px 14px; border-radius:20px; border:1px dashed var(--line);
+    background:none; color:var(--muted); font-size:13px; cursor:pointer;
+  }
+  .newPlBtn:hover{color:var(--mint); border-color:var(--mint);}
+  .newPlRow{
+    display:none; gap:8px; margin-top:10px;
+  }
+  .newPlRow.show{display:flex;}
+  .newPlRow input{
+    flex:1; padding:9px 12px; border-radius:9px; border:1px solid var(--line);
+    background:var(--bg-elev-2); color:var(--text); font-size:13.5px; outline:none;
+  }
+  .newPlRow input:focus{border-color:var(--mint);}
+  .newPlRow button{
+    padding:0 14px; border-radius:9px; border:1px solid var(--line); background:var(--bg-elev-2);
+    color:var(--text); font-size:13px; cursor:pointer;
+  }
+  .newPlRow button.confirm{border-color:var(--mint); color:var(--mint);}
+  .newPlRow button.cancel{color:var(--muted);}
+
+  .addRow{display:flex; gap:8px; margin-bottom:6px;}
+  .addRow input{
+    flex:1; padding:12px 14px; border-radius:9px;
+    border:1px solid var(--line); background:var(--bg-elev);
+    color:var(--text); font-size:13.5px; outline:none;
+  }
+  .addRow input:focus{border-color:var(--mint);}
+  .addRow button{
+    padding:0 18px; border:none; border-radius:9px; background:var(--bg-elev-2);
+    border:1px solid var(--line); color:var(--text); font-weight:500; cursor:pointer; font-size:13.5px;
+    white-space:nowrap;
+  }
+  .addRow button:hover{border-color:var(--mint); color:var(--mint);}
+  .addMsg{font-size:12px; color:var(--coral); min-height:16px; margin:4px 0 14px 2px;}
+
+  .plHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .plHead h2{font-size:14px; letter-spacing:.5px; text-transform:uppercase; color:var(--muted); margin:0; font-weight:600;}
+  .plCount{font-size:12px; color:var(--muted);}
+  .plList{display:flex; flex-direction:column; gap:6px;}
+  .plItem{
+    display:flex; align-items:center; gap:10px;
+    padding:11px 12px; border-radius:10px; border:1px solid transparent;
+    background:var(--bg-elev); cursor:pointer; transition:border-color .15s, background .15s;
+  }
+  .plItem:hover{border-color:var(--line);}
+  .plItem.active{border-color:var(--mint); background:var(--mint-dim);}
+  .plIndex{width:22px; text-align:center; font-size:12px; color:var(--muted); flex-shrink:0;}
+  .plItem.active .plIndex{color:var(--mint);}
+  .plInfo{flex:1; min-width:0;}
+  .plTitle{font-size:13.5px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .plTitleInput{
+    width:100%; font-size:13.5px; font-weight:500; background:var(--bg-elev-2);
+    border:1px solid var(--mint); border-radius:6px; color:var(--text); padding:4px 6px; outline:none;
+  }
+  .plSrc{font-size:11px; color:var(--muted); margin-top:2px;}
+  .plActionBtn{
+    background:none; border:none; color:var(--muted); cursor:pointer;
+    width:26px; height:26px; border-radius:50%; flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .plActionBtn:hover{color:var(--mint); background:var(--mint-dim);}
+  .plActionBtn.del:hover{color:var(--coral); background:var(--coral-dim);}
+  .emptyState{
+    text-align:center; padding:36px 16px; color:var(--muted); font-size:13px;
+    border:1px dashed var(--line); border-radius:var(--radius);
+  }
+
+  .note{
+    margin-top:26px; padding:14px 16px; border-radius:12px;
+    background:var(--bg-elev); border:1px solid var(--line);
+    font-size:12px; color:var(--muted); line-height:1.6;
+  }
+  .note b{color:var(--text);}
+
+  #hiddenPlayers{position:absolute; left:-9999px; top:-9999px; width:1px; height:1px; overflow:hidden;}
+
+  @media (max-width:480px){
+    .authCard{padding:26px 20px;}
+    .controls{gap:12px;}
+  }
+</style>
+</head>
+<body>
+
+<div id="authScreen" class="active">
+  <div class="authCard">
+    <div class="authHead">
+      <div class="wave-mark"><span></span><span></span><span></span><span></span><span></span></div>
+      <div class="brand">Sóng</div>
+    </div>
+    <p class="authSub" id="authSubText">Đăng nhập để lưu danh sách phát của riêng bạn.</p>
+
+    <div class="field">
+      <label>Tên đăng nhập</label>
+      <input id="inpUser" type="text" placeholder="vd: minhAnh99" autocomplete="off">
+      <div class="hint">Chỉ chữ không dấu và số, viết liền, không khoảng trắng (3–20 ký tự). Có thể viết hoa.</div>
+      <div class="err" id="errUser"></div>
+    </div>
+    <div class="field">
+      <label>Mật khẩu</label>
+      <input id="inpPass" type="password" placeholder="Ít nhất 6 ký tự">
+      <div class="err" id="errPass"></div>
+    </div>
+
+    <button class="btnPrimary" id="btnSubmitAuth">Đăng nhập</button>
+    <div class="authMsg" id="authMsg"></div>
+    <div class="switchAuth" id="switchAuthRow">
+      Chưa có tài khoản? <a id="linkToRegister">Đăng ký ngay</a>
+    </div>
+  </div>
+</div>
+
+<div id="appScreen">
+  <div class="appWrap">
+    <div class="topbar">
+      <div class="brand">
+        <div class="wave-mark" id="topWave"><span></span><span></span><span></span><span></span><span></span></div>
+        Sóng
+      </div>
+      <div class="userChip">
+        Xin chào, <b id="userNameLabel"></b>
+        <button class="logoutBtn" id="btnLogout">Đăng xuất</button>
+      </div>
+    </div>
+
+    <div class="nowPlaying">
+      <div class="npTop">
+        <div class="npLabel">Đang phát</div>
+      </div>
+      <div class="npTitle" id="npTitle">Chưa chọn bài nào</div>
+      <div class="npSource" id="npSource"></div>
+
+      <div class="controls">
+        <button class="ctrlBtn" id="btnPrev" title="Bài trước">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z"/></svg>
+        </button>
+        <button class="ctrlBtn play" id="btnPlayPause" title="Phát/Tạm dừng">
+          <svg id="iconPlay" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          <svg id="iconPause" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M6 5h4v14H6zm8 0h4v14h-4z"/></svg>
+        </button>
+        <button class="ctrlBtn" id="btnNext" title="Bài tiếp">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 6h2v12h-2zM6 6v12l8.5-6z"/></svg>
+        </button>
+        <button class="ctrlBtn" id="btnLoop" title="Chế độ lặp">
+          <svg viewBox="0 0 24 24" fill="currentColor"><path d="M17 17H7v-3l-4 4 4 4v-3h12v-5h-2zM7 7h10v3l4-4-4-4v3H5v5h2z"/></svg>
+        </button>
+      </div>
+
+      <div class="volRow">
+        <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 10v4h4l5 5V5L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4v8a4.5 4.5 0 0 0 2.5-4z"/></svg>
+        <input type="range" id="volSlider" min="0" max="100" value="70">
+      </div>
+    </div>
+
+    <div class="playlistsBar">
+      <div class="plTabsRow">
+        <div class="plTabs" id="plTabs"></div>
+        <button class="newPlBtn" id="btnShowNewPl">+ Danh sách mới</button>
+      </div>
+      <div class="newPlRow" id="newPlRow">
+        <input id="inpNewPlName" type="text" placeholder="Tên danh sách phát, vd: Nhạc chill">
+        <button class="confirm" id="btnConfirmNewPl">Tạo</button>
+        <button class="cancel" id="btnCancelNewPl">Hủy</button>
+      </div>
+    </div>
+
+    <div class="addRow">
+      <input id="inpLink" type="text" placeholder="Dán link YouTube hoặc Spotify vào đây...">
+      <button id="btnAddLink">Thêm vào danh sách</button>
+    </div>
+    <div class="addMsg" id="addMsg"></div>
+
+    <div class="plHead">
+      <h2 id="plActiveName">Danh sách phát</h2>
+      <span class="plCount" id="plCount">0 bài</span>
+    </div>
+    <div class="plList" id="plList"></div>
+    <div class="emptyState" id="emptyState">Danh sách trống — dán một link nhạc ở trên để bắt đầu.</div>
+
+    <div class="note">
+      <b>Lưu ý:</b> Với YouTube, trình phát được ẩn hoàn toàn khỏi màn hình nên bạn sẽ không thấy hình ảnh — tuy nhiên nếu video gốc có quảng cáo do YouTube chèn, quảng cáo đó vẫn có thể phát vì nằm ngoài khả năng kiểm soát của trang này.
+      Với Spotify, bài hát phát qua trình nhúng chính thức của Spotify: nếu bạn đã đăng nhập Spotify (đặc biệt là Premium) trong cùng trình duyệt, bài hát sẽ phát đầy đủ; nếu chưa, chỉ nghe được đoạn xem trước ngắn.
+      Bạn có thể tạo nhiều danh sách phát khác nhau và đặt lại tên cho từng bài hát theo ý muốn.
+    </div>
+  </div>
+</div>
+
+<div id="hiddenPlayers">
+  <div id="ytPlayerDiv"></div>
+  <div id="spPlayerDiv"></div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  function $(id){ return document.getElementById(id); }
+  function hash(str){ return CryptoJS.SHA256(str).toString(); }
+  function genId(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,8); }
+  function escapeHtml(s){
+    return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  }
+  function escUrlForOembed(url){ return encodeURIComponent(url); }
+
+  async function storeGet(key){
+    try{ const r = await window.storage.get(key, false); return r ? JSON.parse(r.value) : null; }
+    catch(e){ return null; }
+  }
+  async function storeSet(key, value){
+    try{ return await window.storage.set(key, JSON.stringify(value), false); }
+    catch(e){ console.error("storage set failed", e); return null; }
+  }
+
+  function extractYouTubeId(url){
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=)([\w-]{11})/,
+      /(?:youtu\.be\/)([\w-]{11})/,
+      /(?:youtube\.com\/shorts\/)([\w-]{11})/,
+      /(?:youtube\.com\/embed\/)([\w-]{11})/
+    ];
+    for(const p of patterns){ const m = url.match(p); if(m) return m[1]; }
+    return null;
+  }
+  function extractSpotifyTrackId(url){
+    let m = url.match(/open\.spotify\.com\/(?:intl-\w+\/)?track\/([a-zA-Z0-9]+)/);
+    if(m) return m[1];
+    m = url.match(/spotify:track:([a-zA-Z0-9]+)/);
+    if(m) return m[1];
+    return null;
+  }
+
+  let authMode = "login";
+  let currentUser = null;
+  const userRegex = /^[A-Za-z0-9]{3,20}$/;
+
+  function setAuthMode(mode){
+    authMode = mode;
+    $("authMsg").textContent = "";
+    $("errUser").classList.remove("show");
+    $("errPass").classList.remove("show");
+    if(mode === "login"){
+      $("authSubText").textContent = "Đăng nhập để lưu danh sách phát của riêng bạn.";
+      $("btnSubmitAuth").textContent = "Đăng nhập";
+      $("switchAuthRow").innerHTML = 'Chưa có tài khoản? <a id="linkToRegister">Đăng ký ngay</a>';
+      $("linkToRegister").onclick = () => setAuthMode("register");
+    } else {
+      $("authSubText").textContent = "Tạo tài khoản mới để bắt đầu lưu nhạc yêu thích.";
+      $("btnSubmitAuth").textContent = "Đăng ký";
+      $("switchAuthRow").innerHTML = 'Đã có tài khoản? <a id="linkToRegister">Đăng nhập</a>';
+      $("linkToRegister").onclick = () => setAuthMode("login");
+    }
+  }
+  $("linkToRegister").onclick = () => setAuthMode("register");
+
+  $("btnSubmitAuth").addEventListener("click", async () => {
+    const uname = $("inpUser").value.trim();
+    const pass = $("inpPass").value;
+    let ok = true;
+
+    if(!userRegex.test(uname)){
+      $("errUser").textContent = "Tên đăng nhập không hợp lệ: chỉ dùng chữ (không dấu) và số, viết liền, 3–20 ký tự.";
+      $("errUser").classList.add("show");
+      ok = false;
+    } else {
+      $("errUser").classList.remove("show");
+    }
+    if(pass.length < 6){
+      $("errPass").textContent = "Mật khẩu cần tối thiểu 6 ký tự.";
+      $("errPass").classList.add("show");
+      ok = false;
+    } else {
+      $("errPass").classList.remove("show");
+    }
+    if(!ok) return;
+
+    const key = "account:" + uname.toLowerCase();
+    const existing = await storeGet(key);
+
+    if(authMode === "register"){
+      if(existing){
+        $("authMsg").textContent = "Tên đăng nhập đã tồn tại, hãy chọn tên khác hoặc đăng nhập.";
+        return;
+      }
+      await storeSet(key, { username: uname, passwordHash: hash(pass) });
+      await storeSet("session:current", { username: uname });
+      currentUser = uname;
+      enterApp();
+    } else {
+      if(!existing || existing.passwordHash !== hash(pass)){
+        $("authMsg").textContent = "Tên đăng nhập hoặc mật khẩu không đúng.";
+        return;
+      }
+      await storeSet("session:current", { username: existing.username });
+      currentUser = existing.username;
+      enterApp();
+    }
+  });
+
+  $("btnLogout").addEventListener("click", async () => {
+    await storeSet("session:current", { username: null });
+    currentUser = null;
+    stopEverything();
+    $("appScreen").classList.remove("active");
+    $("authScreen").classList.add("active");
+    $("inpUser").value = "";
+    $("inpPass").value = "";
+    setAuthMode("login");
+  });
+
+  let playlists = [];
+  let activePlaylistId = null;
+  let currentIndex = -1;
+  let loopMode = "off";
+  let isPlaying = false;
+
+  function getActivePlaylist(){
+    return playlists.find(p => p.id === activePlaylistId) || null;
+  }
+  function getActiveTracks(){
+    const pl = getActivePlaylist();
+    return pl ? pl.tracks : [];
+  }
+
+  async function loadUserData(){
+    const data = await storeGet("playlists:" + currentUser.toLowerCase());
+    if(data && Array.isArray(data.playlists) && data.playlists.length > 0){
+      playlists = data.playlists;
+      activePlaylistId = data.activeId && playlists.some(p=>p.id===data.activeId) ? data.activeId : playlists[0].id;
+      return;
+    }
+    const legacy = await storeGet("playlist:" + currentUser.toLowerCase());
+    if(legacy && Array.isArray(legacy) && legacy.length > 0){
+      const pl = { id: genId(), name: "Danh sách của tôi", tracks: legacy };
+      playlists = [pl];
+      activePlaylistId = pl.id;
+      await saveUserData();
+      return;
+    }
+    const pl = { id: genId(), name: "Danh sách của tôi", tracks: [] };
+    playlists = [pl];
+    activePlaylistId = pl.id;
+    await saveUserData();
+  }
+  async function saveUserData(){
+    await storeSet("playlists:" + currentUser.toLowerCase(), { playlists, activeId: activePlaylistId });
+  }
+
+  function renderPlaylistTabs(){
+    const wrap = $("plTabs");
+    wrap.innerHTML = playlists.map(p => `
+      <div class="plTab ${p.id===activePlaylistId?'active':''}" data-plid="${p.id}">
+        <span class="plTabName" data-plid="${p.id}">${escapeHtml(p.name)}</span>
+        ${playlists.length > 1 ? `<button class="plTabDel" data-plid="${p.id}" title="Xóa danh sách này">×</button>` : ""}
+      </div>
+    `).join("");
+
+    wrap.querySelectorAll(".plTab").forEach(el => {
+      el.addEventListener("click", (e) => {
+        if(e.target.closest(".plTabDel")) return;
+        if(e.target.classList.contains("plTabName") && e.target.isContentEditable) return;
+        switchPlaylist(el.dataset.plid);
+      });
+    });
+    wrap.querySelectorAll(".plTabName").forEach(el => {
+      el.addEventListener("dblclick", (e) => {
+        e.stopPropagation();
+        startRenamePlaylist(el);
+      });
+    });
+    wrap.querySelectorAll(".plTabDel").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        await deletePlaylist(btn.dataset.plid);
+      });
+    });
+
+    $("plActiveName").textContent = getActivePlaylist() ? getActivePlaylist().name : "Danh sách phát";
+  }
+
+  function startRenamePlaylist(nameEl){
+    const plid = nameEl.dataset.plid;
+    const pl = playlists.find(p => p.id === plid);
+    if(!pl) return;
+    nameEl.contentEditable = "true";
+    nameEl.focus();
+    window.getSelection().selectAllChildren(nameEl);
+
+    function finish(save){
+      nameEl.contentEditable = "false";
+      if(save){
+        const newName = nameEl.textContent.trim();
+        if(newName){ pl.name = newName; }
+        saveUserData();
+        renderPlaylistTabs();
+      } else {
+        nameEl.textContent = pl.name;
+      }
+      nameEl.removeEventListener("keydown", onKey);
+      nameEl.removeEventListener("blur", onBlur);
+    }
+    function onKey(e){
+      if(e.key === "Enter"){ e.preventDefault(); finish(true); }
+      if(e.key === "Escape"){ e.preventDefault(); finish(false); }
+    }
+    function onBlur(){ finish(true); }
+    nameEl.addEventListener("keydown", onKey);
+    nameEl.addEventListener("blur", onBlur);
+  }
+
+  async function switchPlaylist(plid){
+    if(plid === activePlaylistId) return;
+    stopEverything();
+    currentIndex = -1;
+    updateNowPlaying(null);
+    activePlaylistId = plid;
+    await saveUserData();
+    renderPlaylistTabs();
+    renderPlaylist();
+  }
+
+  $("btnShowNewPl").addEventListener("click", () => {
+    $("newPlRow").classList.add("show");
+    $("inpNewPlName").value = "";
+    $("inpNewPlName").focus();
+  });
+  $("btnCancelNewPl").addEventListener("click", () => {
+    $("newPlRow").classList.remove("show");
+  });
+  $("btnConfirmNewPl").addEventListener("click", createNewPlaylist);
+  $("inpNewPlName").addEventListener("keydown", e => { if(e.key === "Enter") createNewPlaylist(); if(e.key === "Escape") $("newPlRow").classList.remove("show"); });
+
+  async function createNewPlaylist(){
+    const name = $("inpNewPlName").value.trim();
+    if(!name) return;
+    const pl = { id: genId(), name, tracks: [] };
+    playlists.push(pl);
+    activePlaylistId = pl.id;
+    currentIndex = -1;
+    updateNowPlaying(null);
+    await saveUserData();
+    renderPlaylistTabs();
+    renderPlaylist();
+    $("newPlRow").classList.remove("show");
+  }
+
+  async function deletePlaylist(plid){
+    if(playlists.length <= 1) return;
+    const wasActive = plid === activePlaylistId;
+    playlists = playlists.filter(p => p.id !== plid);
+    if(wasActive){
+      stopEverything();
+      currentIndex = -1;
+      updateNowPlaying(null);
+      activePlaylistId = playlists[0].id;
+    }
+    await saveUserData();
+    renderPlaylistTabs();
+    renderPlaylist();
+  }
+
+  function renderPlaylist(){
+    const tracks = getActiveTracks();
+    const list = $("plList");
+    const empty = $("emptyState");
+    $("plCount").textContent = tracks.length + " bài";
+    $("plActiveName").textContent = getActivePlaylist() ? getActivePlaylist().name : "Danh sách phát";
+    if(tracks.length === 0){
+      list.innerHTML = "";
+      empty.style.display = "block";
+      return;
+    }
+    empty.style.display = "none";
+    list.innerHTML = tracks.map((t, i) => `
+      <div class="plItem ${i===currentIndex?'active':''}" data-idx="${i}">
+        <div class="plIndex">${i+1}</div>
+        <div class="plInfo">
+          <div class="plTitle" data-idx="${i}">${escapeHtml(t.title)}</div>
+          <div class="plSrc">${t.type === 'youtube' ? 'YouTube' : 'Spotify'}</div>
+        </div>
+        <button class="plActionBtn rename" data-rename="${i}" title="Đặt tên lại">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+        </button>
+        <button class="plActionBtn del" data-del="${i}" title="Xóa">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
+        </button>
+      </div>
+    `).join("");
+
+    list.querySelectorAll(".plItem").forEach(el => {
+      el.addEventListener("click", (e) => {
+        if(e.target.closest(".plActionBtn")) return;
+        const idx = parseInt(el.dataset.idx, 10);
+        playIndex(idx);
+      });
+    });
+    list.querySelectorAll("[data-del]").forEach(btn => {
+      btn.addEventListener("click", async (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.del, 10);
+        const tr = getActiveTracks();
+        const wasCurrent = idx === currentIndex;
+        tr.splice(idx, 1);
+        if(wasCurrent){ stopEverything(); currentIndex = -1; updateNowPlaying(null); }
+        else if(idx < currentIndex) currentIndex--;
+        await saveUserData();
+        renderPlaylist();
+      });
+    });
+    list.querySelectorAll("[data-rename]").forEach(btn => {
+      btn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        const idx = parseInt(btn.dataset.rename, 10);
+        startRenameTrack(idx);
+      });
+    });
+  }
+
+  function startRenameTrack(idx){
+    const titleEl = document.querySelector('.plTitle[data-idx="' + idx + '"]');
+    if(!titleEl) return;
+    const tracks = getActiveTracks();
+    const current = tracks[idx].title;
+    const input = document.createElement("input");
+    input.className = "plTitleInput";
+    input.value = current;
+    titleEl.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function finish(save){
+      const newTitle = input.value.trim();
+      if(save && newTitle){ tracks[idx].title = newTitle; saveUserData(); }
+      renderPlaylist();
+      if(idx === currentIndex) updateNowPlaying(tracks[idx]);
+    }
+    input.addEventListener("keydown", e => {
+      if(e.key === "Enter"){ e.preventDefault(); finish(true); }
+      if(e.key === "Escape"){ e.preventDefault(); finish(false); }
+    });
+    input.addEventListener("blur", () => finish(true));
+  }
+
+  $("btnAddLink").addEventListener("click", addLinkHandler);
+  $("inpLink").addEventListener("keydown", e => { if(e.key === "Enter") addLinkHandler(); });
+
+  async function addLinkHandler(){
+    const raw = $("inpLink").value.trim();
+    $("addMsg").textContent = "";
+    if(!raw) return;
+    const tracks = getActiveTracks();
+
+    if(raw.includes("youtu")){
+      const id = extractYouTubeId(raw);
+      if(!id){ $("addMsg").textContent = "Không nhận diện được link YouTube."; return; }
+      let title = "Video YouTube (" + id + ")";
+      try{
+        const res = await fetch("https://www.youtube.com/oembed?url=" + escUrlForOembed(raw) + "&format=json");
+        if(res.ok){ const d = await res.json(); if(d.title) title = d.title; }
+      }catch(e){}
+      tracks.push({ type:"youtube", id, title, url: raw });
+      await saveUserData();
+      renderPlaylist();
+      $("inpLink").value = "";
+    } else if(raw.includes("spotify")){
+      const id = extractSpotifyTrackId(raw);
+      if(!id){ $("addMsg").textContent = "Chỉ hỗ trợ link bài hát (track) của Spotify."; return; }
+      let title = "Bài hát Spotify (" + id + ")";
+      try{
+        const res = await fetch("https://open.spotify.com/oembed?url=" + escUrlForOembed(raw));
+        if(res.ok){ const d = await res.json(); if(d.title) title = d.title; }
+      }catch(e){}
+      tracks.push({ type:"spotify", id, title, url: raw });
+      await saveUserData();
+      renderPlaylist();
+      $("inpLink").value = "";
+    } else {
+      $("addMsg").textContent = "Chỉ hỗ trợ link YouTube hoặc Spotify.";
+    }
+  }
+
+  let ytPlayer = null, ytReady = false;
+  const ytTag = document.createElement("script");
+  ytTag.src = "https://www.youtube.com/iframe_api";
+  document.head.appendChild(ytTag);
+  window.onYouTubeIframeAPIReady = function(){
+    ytPlayer = new YT.Player("ytPlayerDiv", {
+      height: "1", width: "1",
+      playerVars: { autoplay:0, controls:0, disablekb:1, modestbranding:1, rel:0, iv_load_policy:3 },
+      events: {
+        onReady: () => { ytReady = true; },
+        onStateChange: onYtStateChange
+      }
+    });
+  };
+  function onYtStateChange(e){
+    if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; updatePlayIcon(); }
+    if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; updatePlayIcon(); }
+    if(e.data === YT.PlayerState.ENDED){ handleTrackEnd(); }
+  }
+
+  let spController = null, spReady = false, spWasPlaying = false, spEndHandled = false;
+  const spTag = document.createElement("script");
+  spTag.src = "https://open.spotify.com/embed/iframe-api/v1";
+  document.head.appendChild(spTag);
+  window.onSpotifyIframeApiReady = (IFrameAPI) => {
+    const element = document.getElementById("spPlayerDiv");
+    const options = { width: "1", height: "1", uri: "" };
+    IFrameAPI.createController(element, options, (controller) => {
+      spController = controller;
+      spReady = true;
+      controller.addListener("playback_update", e => {
+        const { isPaused, position, duration } = e.data;
+        isPlaying = !isPaused;
+        updatePlayIcon();
+        if(!isPaused) { spWasPlaying = true; spEndHandled = false; }
+        if(spWasPlaying && duration > 0 && position >= duration - 400 && isPaused && !spEndHandled){
+          spEndHandled = true;
+          handleTrackEnd();
+        }
+      });
+    });
+  };
+
+  function stopEverything(){
+    isPlaying = false;
+    if(ytReady && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
+    if(spReady && spController) spController.pause();
+    updatePlayIcon();
+  }
+
+  function updatePlayIcon(){
+    $("iconPlay").style.display = isPlaying ? "none" : "block";
+    $("iconPause").style.display = isPlaying ? "block" : "none";
+    const wave = $("topWave");
+    wave.className = "wave-mark" + (isPlaying ? " playing" : " paused");
+  }
+
+  function updateNowPlaying(track){
+    if(!track){
+      $("npTitle").textContent = "Chưa chọn bài nào";
+      $("npSource").innerHTML = "";
+      return;
+    }
+    $("npTitle").textContent = track.title;
+    $("npSource").innerHTML = `<span class="srcTag ${track.type==='youtube'?'yt':'sp'}">${track.type==='youtube'?'YouTube':'Spotify'}</span>`;
+  }
+
+  function playIndex(i){
+    const tracks = getActiveTracks();
+    if(i < 0 || i >= tracks.length) return;
+    if(ytReady && ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+    if(spReady && spController) spController.pause();
+
+    currentIndex = i;
+    const track = tracks[i];
+    updateNowPlaying(track);
+    renderPlaylist();
+
+    if(track.type === "youtube"){
+      if(!ytReady){ setTimeout(()=>playIndex(i), 400); return; }
+      ytPlayer.loadVideoById(track.id);
+      ytPlayer.setVolume(parseInt($("volSlider").value,10));
+      isPlaying = true; updatePlayIcon();
+    } else {
+      if(!spReady){ setTimeout(()=>playIndex(i), 400); return; }
+      spEndHandled = false; spWasPlaying = false;
+      spController.loadUri("spotify:track:" + track.id);
+      spController.play();
+      isPlaying = true; updatePlayIcon();
+    }
+  }
+
+  function handleTrackEnd(){
+    const tracks = getActiveTracks();
+    if(loopMode === "one"){
+      playIndex(currentIndex);
+      return;
+    }
+    let next = currentIndex + 1;
+    if(next >= tracks.length){
+      if(loopMode === "all") next = 0;
+      else { isPlaying = false; updatePlayIcon(); return; }
+    }
+    playIndex(next);
+  }
+
+  $("btnPlayPause").addEventListener("click", () => {
+    const tracks = getActiveTracks();
+    if(currentIndex === -1){
+      if(tracks.length > 0) playIndex(0);
+      return;
+    }
+    const track = tracks[currentIndex];
+    if(track.type === "youtube" && ytReady){
+      if(isPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
+    } else if(track.type === "spotify" && spReady){
+      if(isPlaying) spController.pause(); else spController.resume ? spController.resume() : spController.play();
+    }
+  });
+
+  $("btnNext").addEventListener("click", () => {
+    const tracks = getActiveTracks();
+    if(tracks.length === 0) return;
+    let next = currentIndex + 1;
+    if(next >= tracks.length) next = loopMode === "all" ? 0 : tracks.length - 1;
+    playIndex(next);
+  });
+  $("btnPrev").addEventListener("click", () => {
+    const tracks = getActiveTracks();
+    if(tracks.length === 0) return;
+    let prev = currentIndex - 1;
+    if(prev < 0) prev = loopMode === "all" ? tracks.length - 1 : 0;
+    playIndex(prev);
+  });
+
+  $("btnLoop").addEventListener("click", () => {
+    if(loopMode === "off") loopMode = "all";
+    else if(loopMode === "all") loopMode = "one";
+    else loopMode = "off";
+    const btn = $("btnLoop");
+    btn.classList.remove("loopActive", "loopOneActive");
+    btn.title = "Chế độ lặp: " + (loopMode === "off" ? "Tắt" : loopMode === "all" ? "Lặp toàn bộ" : "Lặp 1 bài");
+    if(loopMode === "all") btn.classList.add("loopActive");
+    if(loopMode === "one") btn.classList.add("loopOneActive");
+  });
+
+  $("volSlider").addEventListener("input", (e) => {
+    const v = parseInt(e.target.value, 10);
+    if(ytReady && ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(v);
+    if(spReady && spController && spController.setVolume) spController.setVolume(v/100);
+  });
+
+  async function enterApp(){
+    $("userNameLabel").textContent = currentUser;
+    $("authScreen").classList.remove("active");
+    $("appScreen").classList.add("active");
+    await loadUserData();
+    renderPlaylistTabs();
+    renderPlaylist();
+  }
+
+  async function boot(){
+    const session = await storeGet("session:current");
+    if(session && session.username){
+      const acc = await storeGet("account:" + session.username.toLowerCase());
+      if(acc){
+        currentUser = acc.username;
+        await enterApp();
+        return;
+      }
+    }
+    setAuthMode("login");
+  }
+  boot();
+})();
+</script>
+</body>
+</html>
