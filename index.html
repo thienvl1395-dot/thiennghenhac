@@ -3,11 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Anime Dashboard</title>
+    <title>Anime Dashboard Blue Edition</title>
     
     <style>
         :root {
-            --theme-color: #ffffff;
+            /* Đổi màu chủ đạo mặc định sang Xanh biển Neon */
+            --theme-color: #00d2ff; 
         }
 
         * {
@@ -21,7 +22,7 @@
             width: 100%;
             height: 100%;
             overflow: hidden;
-            background-color: #0d0d13;
+            background-color: #080d1a;
         }
 
         /* Hình nền chính */
@@ -32,108 +33,21 @@
             background-image: url('https://images.alphacoders.com/105/1053759.jpg'); 
             background-size: cover;
             background-position: center;
-            transition: background 0.5s ease, filter 0.5s ease;
+            transition: background 0.5s ease;
             z-index: 1;
         }
 
+        /* Lớp phủ tối làm nổi bật chữ */
         .rain-overlay {
             position: absolute;
             width: 100%;
             height: 100%;
-            background: rgba(0, 0, 0, 0.2);
+            background: rgba(10, 20, 40, 0.35);
             z-index: 2;
             pointer-events: none;
         }
 
-        /* MÀN HÌNH KHÓA BẢO MẬT */
-        .auth-screen {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 100;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            backdrop-filter: blur(25px);
-            background: rgba(10, 10, 15, 0.65);
-            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-
-        .auth-box {
-            background: rgba(255, 255, 255, 0.07);
-            padding: 40px;
-            border-radius: 16px;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            text-align: center;
-            width: 350px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
-            color: #fff;
-        }
-
-        .lock-icon {
-            font-size: 3rem;
-            margin-bottom: 15px;
-            animation: pulse 2s infinite;
-        }
-
-        .auth-box h2 {
-            font-size: 1.2rem;
-            letter-spacing: 3px;
-            margin-bottom: 5px;
-        }
-
-        .auth-box p {
-            font-size: 0.8rem;
-            opacity: 0.6;
-            margin-bottom: 20px;
-        }
-
-        .auth-box input, .config-panel input {
-            width: 100%;
-            padding: 12px;
-            background: rgba(255,255,255,0.05);
-            border: 1px solid rgba(255,255,255,0.1);
-            border-radius: 6px;
-            color: #fff;
-            text-align: center;
-            outline: none;
-            transition: border 0.3s;
-        }
-
-        .auth-box input:focus, .config-panel input:focus {
-            border-color: var(--theme-color);
-        }
-
-        .auth-box button, .btn-primary {
-            width: 100%;
-            padding: 12px;
-            margin-top: 15px;
-            background: #fff;
-            color: #000;
-            border: none;
-            border-radius: 6px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-        }
-
-        .auth-box button:hover, .btn-primary:hover {
-            box-shadow: 0 0 15px rgba(255,255,255,0.5);
-            transform: translateY(-2px);
-        }
-
-        .error-text {
-            color: #ff4a4a;
-            margin-top: 10px;
-            font-size: 0.8rem;
-            min-height: 18px;
-        }
-
-        .error-shake {
-            animation: shake 0.2s ease-in-out 2;
-            border-color: #ff4a4a !important;
-        }
-
-        /* GIAO DIỆN CHÍNH */
+        /* GIAO DIỆN DASHBOARD CHÍNH (Hiện ngay lập tức) */
         .dashboard {
             position: relative;
             z-index: 3;
@@ -142,14 +56,14 @@
             align-items: center;
             justify-content: flex-start;
             height: 100%;
-            padding-top: 8vh;
+            padding-top: 10vh;
             color: var(--theme-color);
-            text-shadow: 0px 4px 12px rgba(0, 0, 0, 0.8);
-            transition: opacity 0.5s ease;
+            text-shadow: 0px 0px 15px rgba(0, 210, 255, 0.6), 0px 4px 12px rgba(0, 0, 0, 0.9);
+            transition: color 0.3s ease;
         }
 
         .time-widget h1 {
-            font-size: 6rem;
+            font-size: 6.5rem;
             font-family: 'Georgia', serif;
             font-style: italic;
             font-weight: 300;
@@ -157,7 +71,7 @@
         }
 
         .date-text {
-            font-size: 0.9rem;
+            font-size: 0.95rem;
             text-transform: uppercase;
             letter-spacing: 6px;
             text-align: center;
@@ -165,142 +79,150 @@
         }
 
         .clock-text {
-            font-size: 1.6rem;
+            font-size: 1.8rem;
             letter-spacing: 3px;
             text-align: center;
-            margin-top: 5px;
+            margin-top: 8px;
             font-weight: 600;
         }
 
-        /* Bộ phát nhạc & Sóng Visualizer */
+        /* Trình điều khiển & Sóng nhạc Visualizer */
         .player-container {
-            margin-top: 40px;
+            margin-top: 50px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 20px;
+            gap: 25px;
         }
 
         .music-controls {
             display: flex;
-            gap: 25px;
-            opacity: 0.4;
-            transition: opacity 0.3s;
+            gap: 30px;
+            opacity: 0.5;
+            transition: opacity 0.3s, transform 0.3s;
         }
 
-        .music-controls:hover { opacity: 1; }
+        .music-controls:hover { 
+            opacity: 1; 
+            transform: scale(1.05);
+        }
 
         .control-btn {
             background: none;
             border: none;
             color: var(--theme-color);
-            font-size: 1.4rem;
+            font-size: 1.6rem;
             cursor: pointer;
+            filter: drop-shadow(0 0 8px var(--theme-color));
         }
 
         .visualizer {
             display: flex;
             align-items: center;
-            gap: 4px;
-            height: 40px;
+            gap: 5px;
+            height: 50px;
         }
 
         .bar {
-            width: 3px;
+            width: 4px;
             height: 15px;
             background-color: var(--theme-color);
+            box-shadow: 0 0 10px var(--theme-color);
+            border-radius: 2px;
             animation: bounce 0.6s ease-in-out infinite alternate;
         }
-        .bar:nth-child(2) { animation-delay: 0.1s; height: 25px; }
-        .bar:nth-child(3) { animation-delay: 0.3s; height: 35px; }
-        .bar:nth-child(4) { animation-delay: 0.2s; height: 20px; }
-        .bar:nth-child(5) { animation-delay: 0.4s; height: 40px; }
-        .bar:nth-child(6) { animation-delay: 0.1s; height: 30px; }
-        .bar:nth-child(7) { animation-delay: 0.5s; height: 18px; }
-        .bar:nth-child(8) { animation-delay: 0.2s; height: 28px; }
+        
+        /* Nhịp sóng nhảy ngẫu nhiên */
+        .bar:nth-child(2) { animation-delay: 0.1s; height: 30px; }
+        .bar:nth-child(3) { animation-delay: 0.3s; height: 45px; }
+        .bar:nth-child(4) { animation-delay: 0.2s; height: 25px; }
+        .bar:nth-child(5) { animation-delay: 0.4s; height: 50px; }
+        .bar:nth-child(6) { animation-delay: 0.1s; height: 35px; }
+        .bar:nth-child(7) { animation-delay: 0.5s; height: 20px; }
+        .bar:nth-child(8) { animation-delay: 0.2s; height: 38px; }
 
-        /* BẢNG TÙY BIẾN MOD GIAO DIỆN */
+        @keyframes bounce { 
+            0% { transform: scaleY(0.3); } 
+            100% { transform: scaleY(1.1); } 
+        }
+
+        /* BẢNG TÙY BIẾN MOD GIAO DIỆN (ĐÃ LƯỢC BỎ PHẦN MẬT KHẨU) */
         .config-panel {
             position: fixed;
             bottom: 25px; right: 25px;
-            background: rgba(10, 10, 15, 0.85);
+            background: rgba(10, 16, 30, 0.85);
             padding: 20px;
             border-radius: 12px;
             z-index: 50;
             color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            backdrop-filter: blur(10px);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            backdrop-filter: blur(12px);
             width: 280px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-            transition: opacity 0.5s ease;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
 
-        .panel-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        .panel-header h3 { 
+            font-size: 0.85rem; 
+            letter-spacing: 1px; 
+            color: var(--theme-color);
+            text-shadow: 0 0 8px rgba(0, 210, 255, 0.4);
         }
 
-        .panel-header h3 { font-size: 0.85rem; letter-spacing: 1px; }
-
-        #lockNowBtn {
-            background: transparent; border: none; cursor: pointer; font-size: 1rem;
-        }
-
-        hr { border: 0; height: 1px; background: rgba(255,255,255,0.1); margin: 12px 0; }
+        hr { border: 0; height: 1px; background: rgba(0, 210, 255, 0.2); margin: 12px 0; }
 
         .config-group { margin-bottom: 15px; }
         .config-group label {
-            display: block; font-size: 0.75rem; opacity: 0.7; margin-bottom: 6px;
+            display: block; font-size: 0.75rem; opacity: 0.8; margin-bottom: 6px;
         }
 
-        .config-panel input[type="text"] { text-align: left; font-size: 0.8rem; padding: 8px; }
+        .config-panel input[type="text"] { 
+            width: 100%;
+            padding: 10px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(0, 210, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            font-size: 0.8rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+        
+        .config-panel input[type="text"]:focus {
+            border-color: var(--theme-color);
+            background: rgba(255,255,255,0.08);
+        }
+
         .upload-btn-wrapper { position: relative; overflow: hidden; margin-top: 6px; }
 
         .btn {
-            border: 1px dashed rgba(255, 255, 255, 0.3);
-            color: #ccc; background: transparent;
+            border: 1px dashed rgba(0, 210, 255, 0.4);
+            color: #00d2ff; background: transparent;
             padding: 8px; border-radius: 6px;
             font-size: 0.8rem; width: 100%; cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn:hover {
+            background: rgba(0, 210, 255, 0.1);
         }
 
         .upload-btn-wrapper input[type=file] {
             position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
         }
 
-        input[type="color"] { padding: 0; height: 30px; cursor: pointer; border: none; }
-        .btn-primary { background: var(--theme-color); color: #000; padding: 8px; margin-top: 6px; font-size: 0.8rem; }
-
-        /* Các class bổ trợ ẩn hiện trạng thái */
-        .hidden { opacity: 0 !important; pointer-events: none !important; transform: scale(0.97); }
-        .blur-bg { filter: blur(15px); }
-
-        /* Animation */
-        @keyframes bounce { 0% { transform: scaleY(0.4); } 100% { transform: scaleY(1.2); } }
-        @keyframes pulse { 0% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.05); opacity: 1; } 100% { transform: scale(1); opacity: 0.8; } }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+        input[type="color"] { 
+            padding: 0; height: 35px; width: 100%; cursor: pointer; 
+            border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: transparent;
+        }
     </style>
 </head>
 <body>
 
     <!-- KHU VỰC BACKGROUND -->
-    <div class="background-container blur-bg" id="bgContainer"></div>
+    <div class="background-container" id="bgContainer"></div>
     <div class="rain-overlay"></div>
 
-    <!-- MÀN HÌNH KHÓA TRUY CẬP -->
-    <div class="auth-screen" id="authScreen">
-        <div class="auth-box">
-            <div class="lock-icon">🔒</div>
-            <h2>HỆ THỐNG ĐÃ KHÓA</h2>
-            <p>Vui lòng nhập khóa truy cập để mở giao diện</p>
-            <input type="password" id="passwordInput" placeholder="Mật khẩu (Mặc định: 1234)">
-            <button id="unlockBtn">XÁC NHẬN</button>
-            <div id="errorMsg" class="error-text"></div>
-        </div>
-    </div>
-
-    <!-- GIAO DIỆN DASHBOARD CHÍNH -->
-    <div class="dashboard hidden" id="mainDashboard">
+    <!-- GIAO DIỆN DASHBOARD CHÍNH (VÀO THẲNG KHÔNG CẦN KHÓA) -->
+    <div class="dashboard" id="mainDashboard">
         <div class="time-widget">
             <h1 id="dayName">Sunday</h1>
             <div id="fullDate" class="date-text">19, JULY, 2026</div>
@@ -321,11 +243,10 @@
         </div>
     </div>
 
-    <!-- BẢNG ĐIỀU KHIỂN MOD GIAO DIỆN -->
-    <div class="config-panel hidden" id="configPanel">
+    <!-- BẢNG ĐIỀU KHỂN MOD GIAO DIỆN (ĐÃ LƯỢC BỎ BẢO MẬT) -->
+    <div class="config-panel" id="configPanel">
         <div class="panel-header">
             <h3>⚙️ TÙY BIẾN GIAO DIỆN</h3>
-            <button id="lockNowBtn" title="Khóa màn hình">🔒</button>
         </div>
         <hr>
         <div class="config-group">
@@ -338,73 +259,24 @@
         </div>
         <div class="config-group">
             <label>Màu sắc chủ đạo:</label>
-            <input type="color" id="themeColor" value="#ffffff">
-        </div>
-        <div class="config-group">
-            <label>Đổi khóa truy cập:</label>
-            <input type="password" id="newPassInput" placeholder="Mật khẩu mới">
-            <button id="changePassBtn" class="btn-primary">Cập nhật</button>
+            <input type="color" id="themeColor" value="#00d2ff">
         </div>
     </div>
 
     <!-- XỬ LÝ LOGIC JAVASCRIPT -->
     <script>
-        const authScreen = document.getElementById('authScreen');
         const mainDashboard = document.getElementById('mainDashboard');
         const configPanel = document.getElementById('configPanel');
         const bgContainer = document.getElementById('bgContainer');
-        const passwordInput = document.getElementById('passwordInput');
-        const unlockBtn = document.getElementById('unlockBtn');
-        const errorMsg = document.getElementById('errorMsg');
 
-        // Khóa bảo mật lưu local
-        let secureKey = localStorage.getItem('db_password') || '1234';
-
-        function unlockSystem() {
-            if (passwordInput.value === secureKey) {
-                errorMsg.innerText = "";
-                passwordInput.value = "";
-                authScreen.classList.add('hidden');
-                mainDashboard.classList.remove('hidden');
-                configPanel.classList.remove('hidden');
-                bgContainer.classList.remove('blur-bg');
-            } else {
-                errorMsg.innerText = "Sai khóa truy cập!";
-                passwordInput.classList.add('error-shake');
-                setTimeout(() => passwordInput.classList.remove('error-shake'), 400);
-            }
-        }
-
-        unlockBtn.addEventListener('click', unlockSystem);
-        passwordInput.addEventListener('keypress', (e) => { if (e.key === 'Enter') unlockSystem(); });
-
-        document.getElementById('lockNowBtn').addEventListener('click', () => {
-            authScreen.classList.remove('hidden');
-            mainDashboard.classList.add('hidden');
-            configPanel.classList.add('hidden');
-            bgContainer.classList.add('blur-bg');
-        });
-
-        document.getElementById('changePassBtn').addEventListener('click', () => {
-            const newPass = document.getElementById('newPassInput').value.trim();
-            if (newPass.length >= 4) {
-                secureKey = newPass;
-                localStorage.setItem('db_password', newPass);
-                alert('Đổi khóa truy cập thành công!');
-                document.getElementById('newPassInput').value = "";
-            } else {
-                alert('Mật khẩu tối thiểu phải 4 ký tự!');
-            }
-        });
-
-        // Đồng hồ thời gian thực
+        // ĐỒNG HỒ THỜI GIAN THỰC
         function updateClock() {
             const now = new Date();
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
             const months = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
             
             document.getElementById('dayName').innerText = days[now.getDay()];
-            document.getElementById('fullDate').innerText = `${now.getDate()}, ${months[now.getMonth()]}, ${now.getFullYear()}`;
+            document.getElementById('fullDate').innerText = `${now.getDate()}, ${months[now.getMonth()]} ${now.getFullYear()}`;
             
             let hours = now.getHours();
             let minutes = now.getMinutes();
@@ -419,7 +291,7 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // Load Mod Configs từ LocalStorage
+        // TỰ ĐỘNG LOAD CONFIG CŨ TỪ LOCALSTORAGE (NẾU CÓ)
         const savedBg = localStorage.getItem('db_background');
         if (savedBg) bgContainer.style.backgroundImage = `url('${savedBg}')`;
 
@@ -429,6 +301,7 @@
             document.getElementById('themeColor').value = savedColor;
         }
 
+        // CHỨC NĂNG 1: Đổi nền bằng Link
         document.getElementById('bgLink').addEventListener('input', function() {
             if (this.value.trim()) {
                 bgContainer.style.backgroundImage = `url('${this.value.trim()}')`;
@@ -436,6 +309,7 @@
             }
         });
 
+        // CHỨC NĂNG 2: Đổi nền bằng File ảnh local
         document.getElementById('bgFile').addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
@@ -448,6 +322,7 @@
             }
         });
 
+        // CHỨC NĂNG 3: Đổi màu chủ đạo hệ thống
         document.getElementById('themeColor').addEventListener('input', function() {
             document.documentElement.style.setProperty('--theme-color', this.value);
             localStorage.setItem('db_theme_color', this.value);
