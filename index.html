@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anime Dashboard Blue Edition</title>
+    <title>Anime Music Dashboard - Blue Real Audio</title>
     
     <style>
         :root {
-            /* Đổi màu chủ đạo mặc định sang Xanh biển Neon */
             --theme-color: #00d2ff; 
         }
 
@@ -37,7 +36,6 @@
             z-index: 1;
         }
 
-        /* Lớp phủ tối làm nổi bật chữ */
         .rain-overlay {
             position: absolute;
             width: 100%;
@@ -47,7 +45,7 @@
             pointer-events: none;
         }
 
-        /* GIAO DIỆN DASHBOARD CHÍNH (Hiện ngay lập tức) */
+        /* GIAO DIỆN CHÍNH */
         .dashboard {
             position: relative;
             z-index: 3;
@@ -58,8 +56,7 @@
             height: 100%;
             padding-top: 10vh;
             color: var(--theme-color);
-            text-shadow: 0px 0px 15px rgba(0, 210, 255, 0.6), 0px 4px 12px rgba(0, 0, 0, 0.9);
-            transition: color 0.3s ease;
+            text-shadow: 0px 0px 15px rgba(0, 210, 255, 0.5), 0px 4px 12px rgba(0, 0, 0, 0.9);
         }
 
         .time-widget h1 {
@@ -86,25 +83,30 @@
             font-weight: 600;
         }
 
-        /* Trình điều khiển & Sóng nhạc Visualizer */
+        /* TRÌNH PHÁT NHẠC THẬT */
         .player-container {
-            margin-top: 50px;
+            margin-top: 40px;
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 25px;
+            gap: 20px;
+        }
+
+        /* Tên bài hát đang phát */
+        .track-title {
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+            opacity: 0.8;
+            max-width: 300px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .music-controls {
             display: flex;
+            align-items: center;
             gap: 30px;
-            opacity: 0.5;
-            transition: opacity 0.3s, transform 0.3s;
-        }
-
-        .music-controls:hover { 
-            opacity: 1; 
-            transform: scale(1.05);
         }
 
         .control-btn {
@@ -114,8 +116,16 @@
             font-size: 1.6rem;
             cursor: pointer;
             filter: drop-shadow(0 0 8px var(--theme-color));
+            transition: transform 0.2s;
+        }
+        
+        .control-btn:hover { transform: scale(1.15); }
+        
+        #playBtn {
+            font-size: 2.2rem; /* Làm nổi bật nút Play */
         }
 
+        /* SÓNG NHẠC ĐỒNG BỘ */
         .visualizer {
             display: flex;
             align-items: center;
@@ -130,9 +140,14 @@
             box-shadow: 0 0 10px var(--theme-color);
             border-radius: 2px;
             animation: bounce 0.6s ease-in-out infinite alternate;
+            animation-play-state: paused; /* Mặc định đứng im khi chưa bật nhạc */
         }
         
-        /* Nhịp sóng nhảy ngẫu nhiên */
+        /* Chạy sóng khi trình phát có class .playing */
+        .visualizer.playing .bar {
+            animation-play-state: running;
+        }
+        
         .bar:nth-child(2) { animation-delay: 0.1s; height: 30px; }
         .bar:nth-child(3) { animation-delay: 0.3s; height: 45px; }
         .bar:nth-child(4) { animation-delay: 0.2s; height: 25px; }
@@ -146,7 +161,7 @@
             100% { transform: scaleY(1.1); } 
         }
 
-        /* BẢNG TÙY BIẾN MOD GIAO DIỆN (ĐÃ LƯỢC BỎ PHẦN MẬT KHẨU) */
+        /* BẢNG ĐIỀU KHIỂN / MOD HỆ THỐNG */
         .config-panel {
             position: fixed;
             bottom: 25px; right: 25px;
@@ -157,7 +172,7 @@
             color: #fff;
             border: 1px solid rgba(0, 210, 255, 0.2);
             backdrop-filter: blur(12px);
-            width: 280px;
+            width: 290px;
             box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
 
@@ -170,58 +185,55 @@
 
         hr { border: 0; height: 1px; background: rgba(0, 210, 255, 0.2); margin: 12px 0; }
 
-        .config-group { margin-bottom: 15px; }
+        .config-group { margin-bottom: 12px; }
         .config-group label {
-            display: block; font-size: 0.75rem; opacity: 0.8; margin-bottom: 6px;
+            display: block; font-size: 0.75rem; opacity: 0.8; margin-bottom: 5px;
         }
 
         .config-panel input[type="text"] { 
             width: 100%;
-            padding: 10px;
+            padding: 8px;
             background: rgba(255,255,255,0.05);
             border: 1px solid rgba(0, 210, 255, 0.2);
             border-radius: 6px;
             color: #fff;
-            font-size: 0.8rem;
+            font-size: 0.75rem;
             outline: none;
-            transition: border 0.3s;
         }
         
-        .config-panel input[type="text"]:focus {
-            border-color: var(--theme-color);
-            background: rgba(255,255,255,0.08);
-        }
+        .config-panel input[type="text"]:focus { border-color: var(--theme-color); }
 
-        .upload-btn-wrapper { position: relative; overflow: hidden; margin-top: 6px; }
+        .upload-btn-wrapper { position: relative; overflow: hidden; margin-top: 4px; }
 
         .btn {
             border: 1px dashed rgba(0, 210, 255, 0.4);
             color: #00d2ff; background: transparent;
-            padding: 8px; border-radius: 6px;
-            font-size: 0.8rem; width: 100%; cursor: pointer;
-            transition: all 0.3s;
+            padding: 6px; border-radius: 6px;
+            font-size: 0.75rem; width: 100%; cursor: pointer;
+            text-align: center;
         }
-        .btn:hover {
-            background: rgba(0, 210, 255, 0.1);
-        }
+        .btn:hover { background: rgba(0, 210, 255, 0.1); }
 
         .upload-btn-wrapper input[type=file] {
             position: absolute; left: 0; top: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
         }
 
         input[type="color"] { 
-            padding: 0; height: 35px; width: 100%; cursor: pointer; 
+            padding: 0; height: 30px; width: 100%; cursor: pointer; 
             border: 1px solid rgba(255,255,255,0.2); border-radius: 6px; background: transparent;
         }
     </style>
 </head>
 <body>
 
-    <!-- KHU VỰC BACKGROUND -->
+    <!-- THÀNH PHẦN ẨN: AUDIO HTML5 ĐỂ CHẠY NHẠC -->
+    <audio id="realAudio" src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" loop></audio>
+
+    <!-- BACKGROUND -->
     <div class="background-container" id="bgContainer"></div>
     <div class="rain-overlay"></div>
 
-    <!-- GIAO DIỆN DASHBOARD CHÍNH (VÀO THẲNG KHÔNG CẦN KHÓA) -->
+    <!-- GIAO DIỆN CHÍNH -->
     <div class="dashboard" id="mainDashboard">
         <div class="time-widget">
             <h1 id="dayName">Sunday</h1>
@@ -230,12 +242,17 @@
         </div>
 
         <div class="player-container">
+            <!-- Tên bài nhạc hiển thị -->
+            <div class="track-title" id="trackTitle">🎵 Default SoundHelix Track</div>
+            
             <div class="music-controls">
-                <button class="control-btn">⏮</button>
-                <button class="control-btn">▶</button>
-                <button class="control-btn">⏭</button>
+                <button class="control-btn" id="prevBtn">⏮</button>
+                <button class="control-btn" id="playBtn">▶</button>
+                <button class="control-btn" id="nextBtn">⏭</button>
             </div>
-            <div class="visualizer">
+            
+            <!-- Khu vực sóng nhạc -->
+            <div class="visualizer" id="visualizer">
                 <div class="bar"></div><div class="bar"></div><div class="bar"></div>
                 <div class="bar"></div><div class="bar"></div><div class="bar"></div>
                 <div class="bar"></div><div class="bar"></div>
@@ -243,33 +260,87 @@
         </div>
     </div>
 
-    <!-- BẢNG ĐIỀU KHỂN MOD GIAO DIỆN (ĐÃ LƯỢC BỎ BẢO MẬT) -->
+    <!-- BẢNG TÙY BIẾN MOD GIAO DIỆN & NHẠC -->
     <div class="config-panel" id="configPanel">
         <div class="panel-header">
-            <h3>⚙️ TÙY BIẾN GIAO DIỆN</h3>
+            <h3>⚙️ PHÁT NHẠC & TÙY BIẾN</h3>
         </div>
         <hr>
+        
+        <!-- MOD FILE NHẠC -->
+        <div class="config-group">
+            <label>Thay bài nhạc (Link MP3):</label>
+            <input type="text" id="musicLink" placeholder="Dán link audio/mp3 vào đây...">
+            <div class="upload-btn-wrapper">
+                <button class="btn">Tải file nhạc từ thiết bị</button>
+                <input type="file" id="musicFile" accept="audio/*">
+            </div>
+        </div>
+
+        <hr>
+        <!-- MOD HÌNH NỀN -->
         <div class="config-group">
             <label>Thay đổi hình nền (Link):</label>
             <input type="text" id="bgLink" placeholder="Dán link ảnh vào đây...">
             <div class="upload-btn-wrapper">
-                <button class="btn">Tải file ảnh từ máy</button>
+                <button class="btn">Tải file ảnh từ thiết bị</button>
                 <input type="file" id="bgFile" accept="image/*">
             </div>
         </div>
+        
+        <!-- MOD MÀU SẮC -->
         <div class="config-group">
             <label>Màu sắc chủ đạo:</label>
             <input type="color" id="themeColor" value="#00d2ff">
         </div>
     </div>
 
-    <!-- XỬ LÝ LOGIC JAVASCRIPT -->
     <script>
-        const mainDashboard = document.getElementById('mainDashboard');
-        const configPanel = document.getElementById('configPanel');
         const bgContainer = document.getElementById('bgContainer');
+        const realAudio = document.getElementById('realAudio');
+        const playBtn = document.getElementById('playBtn');
+        const visualizer = document.getElementById('visualizer');
+        const trackTitle = document.getElementById('trackTitle');
 
-        // ĐỒNG HỒ THỜI GIAN THỰC
+        // --- XỬ LÝ TRÌNH PHÁT NHẠC THẬT ---
+        playBtn.addEventListener('click', function() {
+            if (realAudio.paused) {
+                realAudio.play();
+                playBtn.innerText = "⏸"; // Đổi icon thành Pause
+                visualizer.classList.add('playing'); // Kích hoạt sóng nhảy
+            } else {
+                realAudio.pause();
+                playBtn.innerText = "▶"; // Đổi icon thành Play
+                visualizer.classList.remove('playing'); // Cho sóng dừng
+            }
+        });
+
+        // Thay nhạc bằng Link MP3 ngoài
+        document.getElementById('musicLink').addEventListener('input', function() {
+            const link = this.value.trim();
+            if (link) {
+                realAudio.src = link;
+                trackTitle.innerText = "🎵 Custom URL Audio Track";
+                if (!realAudio.paused) realAudio.play();
+            }
+        });
+
+        // Thay nhạc bằng cách upload file .mp3 từ máy
+        document.getElementById('musicFile').addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const fileURL = URL.createObjectURL(file);
+                realAudio.src = fileURL;
+                trackTitle.innerText = `🎵 ${file.name}`;
+                // Tự động phát sau khi nhận file mới
+                realAudio.play();
+                playBtn.innerText = "⏸";
+                visualizer.classList.add('playing');
+            }
+        });
+
+
+        // --- ĐỒNG HỒ THỜI GIAN THỰC ---
         function updateClock() {
             const now = new Date();
             const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
@@ -291,7 +362,8 @@
         setInterval(updateClock, 1000);
         updateClock();
 
-        // TỰ ĐỘNG LOAD CONFIG CŨ TỪ LOCALSTORAGE (NẾU CÓ)
+
+        // --- QUẢN LÝ MOD CẤU HÌNH (LOCALSTORAGE) ---
         const savedBg = localStorage.getItem('db_background');
         if (savedBg) bgContainer.style.backgroundImage = `url('${savedBg}')`;
 
@@ -301,7 +373,7 @@
             document.getElementById('themeColor').value = savedColor;
         }
 
-        // CHỨC NĂNG 1: Đổi nền bằng Link
+        // Mod hình nền bằng Link
         document.getElementById('bgLink').addEventListener('input', function() {
             if (this.value.trim()) {
                 bgContainer.style.backgroundImage = `url('${this.value.trim()}')`;
@@ -309,20 +381,20 @@
             }
         });
 
-        // CHỨC NĂNG 2: Đổi nền bằng File ảnh local
+        // Mod hình nền bằng File ảnh
         document.getElementById('bgFile').addEventListener('change', function() {
             const file = this.files[0];
             if (file) {
                 const reader = new FileReader();
                 reader.onload = function(e) {
                     bgContainer.style.backgroundImage = `url('${e.target.result}')`;
-                    try { localStorage.setItem('db_background', e.target.result); } catch(e) {}
+                    try { localStorage.setItem('db_background', e.target.result); } catch(err) {}
                 };
                 reader.readAsDataURL(file);
             }
         });
 
-        // CHỨC NĂNG 3: Đổi màu chủ đạo hệ thống
+        // Đổi màu chủ đạo hệ thống
         document.getElementById('themeColor').addEventListener('input', function() {
             document.documentElement.style.setProperty('--theme-color', this.value);
             localStorage.setItem('db_theme_color', this.value);
