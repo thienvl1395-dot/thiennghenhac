@@ -3,20 +3,20 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Nghe Nhạc</title>
+<title>Thien — nghe nhạc chỉ âm thanh</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root{
-    --bg:#080b10;
-    --bg-elev:#111622;
-    --bg-elev-2:#1a2130;
-    --line: rgba(255,255,255,0.06);
-    --text:#f1f5f9;
-    --muted:#64748b;
-    --mint:#00f5d4;
-    --mint-dim: rgba(0, 245, 212, 0.12);
-    --coral:#ff5436;
+    --bg: #060b16;
+    --bg-elev: #0c152b;
+    --bg-elev-2: #162447;
+    --line: rgba(52, 152, 219, 0.15);
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --blue-neon: #00d2ff;
+    --blue-glow: rgba(0, 210, 255, 0.25);
+    --coral: #ff5436;
     --coral-dim: rgba(255, 84, 54, 0.12);
     --radius: 16px;
     --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -26,8 +26,8 @@
   body{
     margin:0;
     background:
-      radial-gradient(60% 50% at 85% -10%, rgba(0, 245, 212, 0.07), transparent 60%),
-      radial-gradient(50% 40% at 5% 0%, rgba(255, 84, 54, 0.05), transparent 60%),
+      radial-gradient(60% 50% at 85% -10%, rgba(0, 210, 255, 0.12), transparent 60%),
+      radial-gradient(50% 40% at 5% 0%, rgba(41, 128, 185, 0.1), transparent 60%),
       var(--bg);
     color:var(--text);
     font-family:'Inter', sans-serif;
@@ -36,7 +36,7 @@
   }
   h1,h2,h3,.display{font-family:'Space Grotesk', sans-serif;}
   button{font-family:inherit;}
-  ::selection{background:var(--mint-dim); color: var(--mint);}
+  ::selection{background:var(--blue-glow); color: var(--blue-neon);}
 
   #authScreen, #appScreen{
     min-height:100vh;
@@ -52,7 +52,8 @@
 
   .wave-mark{display:flex; align-items:flex-end; gap:3px; height:22px;}
   .wave-mark span{
-    width:4px; background:var(--mint); border-radius:2px;
+    width:4px; background:var(--blue-neon); border-radius:2px;
+    box-shadow: 0 0 8px var(--blue-neon);
     animation: waveIdle 2.2s ease-in-out infinite;
   }
   .wave-mark span:nth-child(1){height:8px; animation-delay:0s;}
@@ -73,13 +74,14 @@
     border:1px solid var(--line);
     border-radius:var(--radius);
     padding:40px 32px;
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 30px rgba(0, 210, 255, 0.05);
+    backdrop-filter: blur(8px);
   }
   .authHead{display:flex; align-items:center; gap:12px; margin-bottom:8px;}
-  .authHead .brand{font-size:24px; font-weight:700; letter-spacing:-0.5px;}
+  .authHead .brand{font-size:26px; font-weight:700; letter-spacing:-0.5px; color: #fff; text-shadow: 0 0 10px rgba(0, 210, 255, 0.3);}
   .authSub{color:var(--muted); font-size:14px; margin:0 0 28px; line-height:1.5;}
   .field{margin-bottom:20px;}
-  .field label{display:block; font-size:12px; font-weight: 500; color:var(--muted); margin-bottom:8px; letter-spacing:.5px; text-transform: uppercase;}
+  .field label{display:block; font-size:12px; font-weight: 600; color:var(--muted); margin-bottom:8px; letter-spacing:.5px; text-transform: uppercase;}
   
   .pass-wrapper {
     position: relative;
@@ -92,7 +94,7 @@
     color:var(--text); font-size:14px; outline:none;
     transition:var(--transition);
   }
-  .field input:focus{border-color:var(--mint); box-shadow: 0 0 0 3px var(--mint-dim);}
+  .field input:focus{border-color:var(--blue-neon); box-shadow: 0 0 0 3px var(--blue-glow);}
   .field .toggle-password {
     position: absolute;
     right: 12px;
@@ -106,7 +108,7 @@
     justify-content: center;
     transition: color 0.2s;
   }
-  .field .toggle-password:hover { color: var(--mint); }
+  .field .toggle-password:hover { color: var(--blue-neon); }
   .field .toggle-password svg { width: 20px; height: 20px; fill: currentColor; }
   
   .field .hint{font-size:11px; color:var(--muted); margin-top:6px; line-height: 1.4;}
@@ -117,45 +119,54 @@
 
   .btnPrimary{
     width:100%; padding:14px; border:none; border-radius:10px;
-    background:var(--mint); color:#000; font-weight:600; font-size:15px;
+    background: linear-gradient(135deg, #00d2ff, #0066ff); color:#fff; font-weight:600; font-size:15px;
     cursor:pointer; transition:var(--transition);
-    box-shadow: 0 4px 12px var(--mint-dim);
+    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.4);
   }
-  .btnPrimary:hover{filter:brightness(1.1); transform: translateY(-1px);}
-  .btnPrimary:active{transform:scale(.98);}
+  .btnPrimary:hover{
+    filter:brightness(1.1); 
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 210, 255, 0.6);
+  }
+  .btnPrimary:active{transform:translateY(0) scale(.98);}
 
   .switchAuth{text-align:center; margin-top:20px; font-size:14px; color:var(--muted);}
-  .switchAuth a{color:var(--mint); cursor:pointer; text-decoration:none; font-weight: 500;}
+  .switchAuth a{color:var(--blue-neon); cursor:pointer; text-decoration:none; font-weight: 500;}
   .switchAuth a:hover{text-decoration: underline;}
   .authMsg{font-size:13px; color:var(--coral); text-align:center; min-height:16px; margin-top:12px;}
 
   .appWrap{width:100%; max-width:640px; margin:0 auto; padding:0 16px 60px;}
   .topbar{display:flex; align-items:center; justify-content:space-between; margin-bottom:28px;}
-  .topbar .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:20px;}
+  .topbar .brand{display:flex; align-items:center; gap:10px; font-weight:700; font-size:22px; text-shadow: 0 0 10px rgba(0, 210, 255, 0.2);}
   .userChip{display:flex; align-items:center; gap:12px; font-size:14px; color:var(--muted);}
   .userChip b{color:var(--text); font-weight:600;}
   .logoutBtn{
     background:none; border:1px solid var(--line); color:var(--muted);
     padding:6px 14px; border-radius:20px; font-size:12px; cursor:pointer; transition:var(--transition);
   }
-  .logoutBtn:hover{color:var(--coral); border-color:var(--coral-dim); background: var(--coral-dim);}
+  .logoutBtn:hover{
+    color:#fff; 
+    border-color:var(--blue-neon); 
+    background: var(--blue-glow);
+    box-shadow: 0 0 10px var(--blue-glow);
+  }
 
   .nowPlaying{
     background:linear-gradient(180deg, var(--bg-elev), var(--bg-elev-2));
     border:1px solid var(--line); border-radius:var(--radius);
     padding:28px; margin-bottom:24px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.4), inset 0 1px 1px rgba(255,255,255,0.05);
   }
   .npTop{display:flex; align-items:center; justify-content:space-between; margin-bottom:4px;}
   .npLabel{font-size:11px; letter-spacing:1.5px; color:var(--muted); text-transform:uppercase; font-weight: 600;}
-  .npTitle{font-size:22px; font-weight:700; margin:8px 0 4px; line-height:1.3; word-break:break-word;}
+  .npTitle{font-size:22px; font-weight:700; margin:8px 0 4px; line-height:1.3; word-break:break-word; color:#fff;}
   .npSource{font-size:13px; color:var(--muted); display:flex; align-items:center; gap:6px;}
   .srcTag{
     font-size:11px; padding:3px 9px; border-radius:20px; letter-spacing:.3px; font-weight: 500;
     border:1px solid var(--line); color:var(--muted);
   }
   .srcTag.yt{color:var(--coral); border-color:var(--coral-dim); background: var(--coral-dim);}
-  .srcTag.sp{color:var(--mint); border-color:var(--mint-dim); background: var(--mint-dim);}
+  .srcTag.sp{color:var(--blue-neon); border-color:var(--blue-glow); background: var(--blue-glow);}
 
   .controls{display:flex; align-items:center; justify-content:center; gap:20px; margin-top:24px;}
   .ctrlBtn{
@@ -164,14 +175,20 @@
     width:44px; height:44px; border-radius:50%;
     transition:var(--transition);
   }
-  .ctrlBtn:hover{background:var(--bg-elev-2); transform: scale(1.05);}
+  .ctrlBtn:hover{background:var(--bg-elev-2); transform: scale(1.08); color: var(--blue-neon);}
+  .ctrlBtn:active{transform: scale(0.95);}
   .ctrlBtn.play{
-    width:60px; height:60px; background:var(--mint); color:#000;
-    box-shadow: 0 4px 15px var(--mint-dim);
+    width:60px; height:60px; background: linear-gradient(135deg, #00d2ff, #0066ff); color:#fff;
+    box-shadow: 0 4px 15px rgba(0, 102, 255, 0.4);
   }
-  .ctrlBtn.play:hover{background:var(--mint); filter:brightness(1.1); transform: scale(1.08);}
-  .ctrlBtn.loopActive{color:var(--mint); background: var(--mint-dim);}
-  .ctrlBtn.loopOneActive{color:var(--coral); background: var(--coral-dim);}
+  .ctrlBtn.play:hover{
+    filter:brightness(1.1); 
+    transform: scale(1.1) translateY(-1px);
+    box-shadow: 0 6px 20px rgba(0, 210, 255, 0.6);
+  }
+  .ctrlBtn.play:active{transform: scale(0.96);}
+  .ctrlBtn.loopActive{color:var(--blue-neon); background: var(--blue-glow); border: 1px solid var(--blue-neon);}
+  .ctrlBtn.loopOneActive{color:var(--coral); background: var(--coral-dim); border: 1px solid var(--coral);}
   .ctrlBtn svg{width:22px; height:22px;}
   .ctrlBtn.play svg{width:26px; height:26px;}
 
@@ -179,13 +196,15 @@
   .volRow svg{width:18px; height:18px; color:var(--muted); flex-shrink:0;}
   .volRow input[type=range]{
     flex:1; -webkit-appearance:none; height:6px; border-radius:3px;
-    background:var(--line); outline:none; transition: background 0.2s;
+    background:var(--bg-elev-2); outline:none; transition: background 0.2s;
+    border: 1px solid var(--line);
   }
   .volRow input[type=range]::-webkit-slider-thumb{
     -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
-    background:var(--mint); cursor:pointer; transition: transform 0.1s;
+    background:var(--blue-neon); cursor:pointer; transition: transform 0.1s;
+    box-shadow: 0 0 8px var(--blue-neon);
   }
-  .volRow input[type=range]::-webkit-slider-thumb:hover{ transform: scale(1.2); }
+  .volRow input[type=range]::-webkit-slider-thumb:hover{ transform: scale(1.3); }
 
   .playlistsBar{margin-bottom:20px;}
   .plTabsRow{display:flex; align-items:center; gap:8px;}
@@ -201,8 +220,9 @@
     background:var(--bg-elev); cursor:pointer; font-size:13.5px; white-space:nowrap;
     transition:var(--transition);
   }
-  .plTab:hover{border-color:rgba(0, 245, 212, 0.3); background: var(--bg-elev-2);}
-  .plTab.active{background:var(--mint-dim); border-color:var(--mint); color:var(--mint); font-weight: 500;}
+  .plTab:hover{border-color:var(--blue-neon); background: var(--bg-elev-2); transform: translateY(-1px);}
+  .plTab:active{transform: translateY(0);}
+  .plTab.active{background:var(--blue-glow); border-color:var(--blue-neon); color:var(--blue-neon); font-weight: 500;}
   .plTab .plTabName{outline:none;}
   .plTabDel{
     background:none; border:none; color:var(--muted); cursor:pointer;
@@ -215,7 +235,7 @@
     flex-shrink:0; padding:8px 16px; border-radius:20px; border:1px dashed var(--line);
     background:none; color:var(--muted); font-size:13.5px; cursor:pointer; transition: var(--transition);
   }
-  .newPlBtn:hover{color:var(--mint); border-color:var(--mint); background: var(--bg-elev);}
+  .newPlBtn:hover{color:var(--blue-neon); border-color:var(--blue-neon); background: var(--bg-elev); transform: translateY(-1px);}
   
   .newPlRow{ display:none; gap:8px; margin-top:12px; animation: fadeIn 0.2s ease; }
   .newPlRow.show{display:flex;}
@@ -223,12 +243,13 @@
     flex:1; padding:10px 14px; border-radius:10px; border:1px solid var(--line);
     background:var(--bg-elev-2); color:var(--text); font-size:14px; outline:none;
   }
-  .newPlRow input:focus{border-color:var(--mint);}
+  .newPlRow input:focus{border-color:var(--blue-neon);}
   .newPlRow button{
     padding:0 16px; border-radius:10px; border:1px solid var(--line); background:var(--bg-elev-2);
     color:var(--text); font-size:13.5px; cursor:pointer; transition: var(--transition);
   }
-  .newPlRow button.confirm{border-color:var(--mint); color:var(--mint); background: var(--mint-dim);}
+  .newPlRow button:hover{ transform: translateY(-1px); }
+  .newPlRow button.confirm{border-color:var(--blue-neon); color:var(--blue-neon); background: var(--blue-glow);}
   .newPlRow button.cancel{color:var(--muted);}
 
   .addRow{display:flex; gap:8px; margin-bottom:6px;}
@@ -237,13 +258,21 @@
     border:1px solid var(--line); background:var(--bg-elev);
     color:var(--text); font-size:14px; outline:none; transition: var(--transition);
   }
-  .addRow input:focus{border-color:var(--mint); background: var(--bg-elev-2);}
+  .addRow input:focus{border-color:var(--blue-neon); background: var(--bg-elev-2);}
   .addRow button{
     padding:0 20px; border:none; border-radius:10px; background:var(--bg-elev-2);
     border:1px solid var(--line); color:var(--text); font-weight:500; cursor:pointer; font-size:14px;
     white-space:nowrap; transition: var(--transition);
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
   }
-  .addRow button:hover{border-color:var(--mint); color:var(--mint); background: var(--mint-dim);}
+  .addRow button:hover{
+    border-color:var(--blue-neon); 
+    color:var(--blue-neon); 
+    background: var(--blue-glow);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px var(--blue-glow);
+  }
+  .addRow button:active{transform: translateY(0);}
   .addMsg{font-size:13px; color:var(--coral); min-height:16px; margin:6px 0 16px 2px;}
 
   .plHead{display:flex; align-items:center; justify-content:space-between; margin-bottom:12px; margin-top: 10px;}
@@ -256,15 +285,15 @@
     padding:12px 14px; border-radius:12px; border:1px solid transparent;
     background:var(--bg-elev); cursor:pointer; transition:var(--transition);
   }
-  .plItem:hover{border-color:var(--line); background: var(--bg-elev-2); transform: translateX(2px);}
-  .plItem.active{border-color:var(--mint); background:var(--mint-dim);}
+  .plItem:hover{border-color:var(--line); background: var(--bg-elev-2); transform: translateX(4px);}
+  .plItem.active{border-color:var(--blue-neon); background:var(--blue-glow);}
   .plIndex{width:22px; text-align:center; font-size:13px; color:var(--muted); flex-shrink:0; font-weight: 500;}
-  .plItem.active .plIndex{color:var(--mint); font-weight: 700;}
+  .plItem.active .plIndex{color:var(--blue-neon); font-weight: 700;}
   .plInfo{flex:1; min-width:0;}
   .plTitle{font-size:14px; font-weight:500; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .plTitleInput{
     width:100%; font-size:14px; font-weight:500; background:var(--bg-elev-2);
-    border:1px solid var(--mint); border-radius:8px; color:var(--text); padding:6px 10px; outline:none;
+    border:1px solid var(--blue-neon); border-radius:8px; color:var(--text); padding:6px 10px; outline:none;
   }
   .plSrc{font-size:11px; color:var(--muted); margin-top:3px; font-weight: 500;}
   
@@ -273,7 +302,7 @@
     width:30px; height:30px; border-radius:50%; flex-shrink:0;
     display:flex; align-items:center; justify-content:center; transition: var(--transition);
   }
-  .plActionBtn:hover{color:var(--mint); background:var(--mint-dim);}
+  .plActionBtn:hover{color:var(--blue-neon); background:var(--blue-glow);}
   .plActionBtn.del:hover{color:var(--coral); background:var(--coral-dim);}
   
   .emptyState{
@@ -285,7 +314,7 @@
     margin-top:32px; padding:18px 20px; border-radius:14px;
     background:var(--bg-elev); border:1px solid var(--line);
     font-size:13px; color:var(--muted); line-height:1.6;
-    box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
   }
   .note b{color:var(--text);}
 
@@ -303,13 +332,13 @@
   <div class="authCard">
     <div class="authHead">
       <div class="wave-mark"><span></span><span></span><span></span><span></span><span></span></div>
-      <div class="brand">Sóng</div>
+      <div class="brand">Thien</div>
     </div>
     <p class="authSub" id="authSubText">Đăng nhập để lưu danh sách phát của riêng bạn.</p>
 
     <div class="field">
       <label>Tên đăng nhập</label>
-      <input id="inpUser" type="text" placeholder="vd: minhAnh99" autocomplete="off">
+      <input id="inpUser" type="text" placeholder="vd: thien音乐" autocomplete="off">
       <div class="hint">Chỉ chữ không dấu và số, viết liền, không khoảng trắng (3–20 ký tự). Có thể viết hoa.</div>
       <div class="err" id="errUser"></div>
     </div>
@@ -318,7 +347,6 @@
       <div class="pass-wrapper">
         <input id="inpPass" type="password" placeholder="Ít nhất 6 ký tự">
         <button type="button" class="toggle-password" id="btnTogglePass" title="Hiện/Ẩn mật khẩu">
-          <!-- Biểu tượng Con mắt mở mặc định -->
           <svg id="eyeIcon" viewBox="0 0 24 24"><path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/></svg>
         </button>
       </div>
@@ -338,7 +366,7 @@
     <div class="topbar">
       <div class="brand">
         <div class="wave-mark" id="topWave"><span></span><span></span><span></span><span></span><span></span></div>
-        Sóng
+        Thien
       </div>
       <div class="userChip">
         Xin chào, <b id="userNameLabel"></b>
@@ -426,7 +454,6 @@
   }
   function escUrlForOembed(url){ return encodeURIComponent(url); }
 
-  // THAY ĐỔI LỚN: Sử dụng localStorage để lưu trữ vĩnh viễn trên trình duyệt
   async function storeGet(key){
     try {
       const val = localStorage.getItem(key);
@@ -440,17 +467,14 @@
     } catch(e) { console.error("localStorage set failed", e); return null; }
   }
 
-  // Chức năng ẩn/hiện mật khẩu (Biểu tượng con mắt)
   $("btnTogglePass").addEventListener("click", () => {
     const passInput = $("inpPass");
     const eyeIcon = $("eyeIcon");
     if (passInput.type === "password") {
       passInput.type = "text";
-      // Đổi sang icon mắt gạch chéo
       eyeIcon.innerHTML = `<path d="M12 7c-2.76 0-5 2.24-5 5 0 .65.13 1.26.36 1.82l2.92-2.92c-.17-.29-.28-.63-.28-.9 0-1.1.9-2 2-2 .27 0 .61.11.9.28l2.92-2.92C13.26 7.13 12.65 7 12 7zm0 10c2.76 0 5-2.24 5-5 0-.65-.13-1.26-.36-1.82l-2.92 2.92c.17.29.28.63.28.9 0 1.1-.9 2-2 2-.27 0-.61-.11-.9-.28l-2.92 2.92c.56.23 1.17.36 1.82.36zm0-12.5C7 4.5 2.73 7.61 1 12c1.41 3.58 4.67 6.27 8.55 7l2.2-2.2C8.61 16.32 5.92 14.28 4.61 12c1.61-3.69 5.51-6 9.39-6 .67 0 1.34.07 1.99.2l1.65-1.65C15.93 4.75 14 4.5 12 4.5zM22.46 4L21 2.54 2.46 21.08 3.92 22.54 7.6 18.86l1.66-1.66 8.35-8.35 1.66-1.66 3.19-3.19z"/>`;
     } else {
       passInput.type = "password";
-      // Đổi lại mắt mở bình thường
       eyeIcon.innerHTML = `<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5 0-5 2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>`;
     }
   });
@@ -482,7 +506,6 @@
     $("authMsg").textContent = "";
     $("errUser").classList.remove("show");
     $("errPass").classList.remove("show");
-    // reset ô nhập mật khẩu về password khi chuyển qua lại
     $("inpPass").type = "password";
     $("eyeIcon").innerHTML = `<path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5 0-5 2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z"/>`;
     
@@ -500,13 +523,14 @@
   }
   $("linkToRegister").onclick = () => setAuthMode("register");
 
+  // NÂNG CẤP: Đăng ký xong tự đăng nhập ngay, không yêu cầu điền lại gì cả
   $("btnSubmitAuth").addEventListener("click", async () => {
     const uname = $("inpUser").value.trim();
     const pass = $("inpPass").value;
     let ok = true;
 
     if(!userRegex.test(uname)){
-      $("errUser").textContent = "Tên đăng nhập không hợp lệ: chỉ dùng chữ (không dấu) và số, viết liền, 3–20 ký tự.";
+      $("errUser").textContent = "Tên đăng nhập không hợp lệ: chỉ dùng chữ không dấu và số, từ 3-20 ký tự.";
       $("errUser").classList.add("show");
       ok = false;
     } else {
@@ -526,10 +550,12 @@
 
     if(authMode === "register"){
       if(existing){
-        $("authMsg").textContent = "Tên đăng nhập đã tồn tại, hãy chọn tên khác hoặc đăng nhập.";
+        $("authMsg").textContent = "Tên đăng nhập đã tồn tại, hãy chọn tên khác.";
         return;
       }
+      // Lưu tài khoản mới
       await storeSet(key, { username: uname, passwordHash: hash(pass) });
+      // Tự động tạo phiên hoạt động -> Đăng nhập luôn!
       await storeSet("session:current", { username: uname });
       currentUser = uname;
       enterApp();
@@ -576,14 +602,6 @@
       activePlaylistId = data.activeId && playlists.some(p=>p.id===data.activeId) ? data.activeId : playlists[0].id;
       return;
     }
-    const legacy = await storeGet("playlist:" + currentUser.toLowerCase());
-    if(legacy && Array.isArray(legacy) && legacy.length > 0){
-      const pl = { id: genId(), name: "Danh sách của tôi", tracks: legacy };
-      playlists = [pl];
-      activePlaylistId = pl.id;
-      await saveUserData();
-      return;
-    }
     const pl = { id: genId(), name: "Danh sách của tôi", tracks: [] };
     playlists = [pl];
     activePlaylistId = pl.id;
@@ -598,14 +616,13 @@
     wrap.innerHTML = playlists.map(p => `
       <div class="plTab ${p.id===activePlaylistId?'active':''}" data-plid="${p.id}">
         <span class="plTabName" data-plid="${p.id}">${escapeHtml(p.name)}</span>
-        ${playlists.length > 1 ? `<button class="plTabDel" data-plid="${p.id}" title="Xóa danh sách này">×</button>` : ""}
+        ${playlists.length > 1 ? `<button class="plTabDel" data-plid="${p.id}" title="Xóa danh sách">×</button>` : ""}
       </div>
     `).join("");
 
     wrap.querySelectorAll(".plTab").forEach(el => {
       el.addEventListener("click", (e) => {
         if(e.target.closest(".plTabDel")) return;
-        if(e.target.classList.contains("plTabName") && e.target.isContentEditable) return;
         switchPlaylist(el.dataset.plid);
       });
     });
@@ -621,8 +638,6 @@
         await deletePlaylist(btn.dataset.plid);
       });
     });
-
-    $("plActiveName").textContent = getActivePlaylist() ? getActivePlaylist().name : "Danh sách phát";
   }
 
   function startRenamePlaylist(nameEl){
@@ -643,16 +658,12 @@
       } else {
         nameEl.textContent = pl.name;
       }
-      nameEl.removeEventListener("keydown", onKey);
-      nameEl.removeEventListener("blur", onBlur);
     }
-    function onKey(e){
+    nameEl.addEventListener("keydown", e => {
       if(e.key === "Enter"){ e.preventDefault(); finish(true); }
       if(e.key === "Escape"){ e.preventDefault(); finish(false); }
-    }
-    function onBlur(){ finish(true); }
-    nameEl.addEventListener("keydown", onKey);
-    nameEl.addEventListener("blur", onBlur);
+    });
+    nameEl.addEventListener("blur", () => finish(true));
   }
 
   async function switchPlaylist(plid){
@@ -668,14 +679,10 @@
 
   $("btnShowNewPl").addEventListener("click", () => {
     $("newPlRow").classList.add("show");
-    $("inpNewPlName").value = "";
     $("inpNewPlName").focus();
   });
-  $("btnCancelNewPl").addEventListener("click", () => {
-    $("newPlRow").classList.remove("show");
-  });
+  $("btnCancelNewPl").addEventListener("click", () => $("newPlRow").classList.remove("show"));
   $("btnConfirmNewPl").addEventListener("click", createNewPlaylist);
-  $("inpNewPlName").addEventListener("keydown", e => { if(e.key === "Enter") createNewPlaylist(); if(e.key === "Escape") $("newPlRow").classList.remove("show"); });
 
   async function createNewPlaylist(){
     const name = $("inpNewPlName").value.trim();
@@ -725,10 +732,10 @@
           <div class="plTitle" data-idx="${i}">${escapeHtml(t.title)}</div>
           <div class="plSrc">${t.type === 'youtube' ? 'YouTube' : 'Spotify'}</div>
         </div>
-        <button class="plActionBtn rename" data-rename="${i}" title="Đặt tên lại">
+        <button class="plActionBtn rename" data-rename="${i}">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         </button>
-        <button class="plActionBtn del" data-del="${i}" title="Xóa">
+        <button class="plActionBtn del" data-del="${i}">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
         </button>
       </div>
@@ -737,8 +744,7 @@
     list.querySelectorAll(".plItem").forEach(el => {
       el.addEventListener("click", (e) => {
         if(e.target.closest(".plActionBtn")) return;
-        const idx = parseInt(el.dataset.idx, 10);
-        playIndex(idx);
+        playIndex(parseInt(el.dataset.idx, 10));
       });
     });
     list.querySelectorAll("[data-del]").forEach(btn => {
@@ -757,8 +763,7 @@
     list.querySelectorAll("[data-rename]").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const idx = parseInt(btn.dataset.rename, 10);
-        startRenameTrack(idx);
+        startRenameTrack(parseInt(btn.dataset.rename, 10));
       });
     });
   }
@@ -767,10 +772,9 @@
     const titleEl = document.querySelector('.plTitle[data-idx="' + idx + '"]');
     if(!titleEl) return;
     const tracks = getActiveTracks();
-    const current = tracks[idx].title;
     const input = document.createElement("input");
     input.className = "plTitleInput";
-    input.value = current;
+    input.value = tracks[idx].title;
     titleEl.replaceWith(input);
     input.focus();
     input.select();
@@ -782,8 +786,8 @@
       if(idx === currentIndex) updateNowPlaying(tracks[idx]);
     }
     input.addEventListener("keydown", e => {
-      if(e.key === "Enter"){ e.preventDefault(); finish(true); }
-      if(e.key === "Escape"){ e.preventDefault(); finish(false); }
+      if(e.key === "Enter") finish(true);
+      if(e.key === "Escape") finish(false);
     });
     input.addEventListener("blur", () => finish(true));
   }
@@ -851,9 +855,7 @@
   spTag.src = "https://open.spotify.com/embed/iframe-api/v1";
   document.head.appendChild(spTag);
   window.onSpotifyIframeApiReady = (IFrameAPI) => {
-    const element = document.getElementById("spPlayerDiv");
-    const options = { width: "1", height: "1", uri: "" };
-    IFrameAPI.createController(element, options, (controller) => {
+    IFrameAPI.createController(document.getElementById("spPlayerDiv"), { width: "1", height: "1", uri: "" }, (controller) => {
       spController = controller;
       spReady = true;
       controller.addListener("playback_update", e => {
@@ -879,8 +881,7 @@
   function updatePlayIcon(){
     $("iconPlay").style.display = isPlaying ? "none" : "block";
     $("iconPause").style.display = isPlaying ? "block" : "none";
-    const wave = $("topWave");
-    wave.className = "wave-mark" + (isPlaying ? " playing" : " paused");
+    $("topWave").className = "wave-mark" + (isPlaying ? " playing" : " paused");
   }
 
   function updateNowPlaying(track){
@@ -920,10 +921,7 @@
 
   function handleTrackEnd(){
     const tracks = getActiveTracks();
-    if(loopMode === "one"){
-      playIndex(currentIndex);
-      return;
-    }
+    if(loopMode === "one"){ playIndex(currentIndex); return; }
     let next = currentIndex + 1;
     if(next >= tracks.length){
       if(loopMode === "all") next = 0;
@@ -934,10 +932,7 @@
 
   $("btnPlayPause").addEventListener("click", () => {
     const tracks = getActiveTracks();
-    if(currentIndex === -1){
-      if(tracks.length > 0) playIndex(0);
-      return;
-    }
+    if(currentIndex === -1){ if(tracks.length > 0) playIndex(0); return; }
     const track = tracks[currentIndex];
     if(track.type === "youtube" && ytReady){
       if(isPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
@@ -967,7 +962,6 @@
     else loopMode = "off";
     const btn = $("btnLoop");
     btn.classList.remove("loopActive", "loopOneActive");
-    btn.title = "Chế độ lặp: " + (loopMode === "off" ? "Tắt" : loopMode === "all" ? "Lặp toàn bộ" : "Lặp 1 bài");
     if(loopMode === "all") btn.classList.add("loopActive");
     if(loopMode === "one") btn.classList.add("loopOneActive");
   });
@@ -991,11 +985,7 @@
     const session = await storeGet("session:current");
     if(session && session.username){
       const acc = await storeGet("account:" + session.username.toLowerCase());
-      if(acc){
-        currentUser = acc.username;
-        await enterApp();
-        return;
-      }
+      if(acc){ currentUser = acc.username; await enterApp(); return; }
     }
     setAuthMode("login");
   }
