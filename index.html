@@ -474,7 +474,6 @@
   function escapeHtml(s){
     return (s||"").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   }
-  function escUrlForOembed(url){ return encodeURIComponent(url); }
   function formatTime(seconds){
     if(!isFinite(seconds) || seconds < 0) seconds = 0;
     let min = Math.floor(seconds / 60);
@@ -613,17 +612,16 @@
   let playlists = [];
   let activePlaylistId = null;
   let currentIndex = -1;
-  let loopMode = "off";
+  let loopMode = "off"; // "off" (Lặp toàn bộ bài - yêu cầu của bạn), "one" (Lặp 1 bài)
   let isPlaying = false;
   let progressTimer = null;
+  let isDraggingProgress = false;
 
-  function getActivePlaylist(){
-    return playlists.find(p => p.id === activePlaylistId) || null;
-  }
-  function getActiveTracks(){
-    const pl = getActivePlaylist();
-    return pl ? pl.tracks : [];
-  }
+  // Cấu hình SDK Trình phát của bên thứ ba
+  let ytPlayer = null;
+  let spPlayer = null;
+  let ytReady = false;
+  let spReady = false;
 
   function loadUserData(){
     const data = storeGet("playlists:" + currentUser.toLowerCase());
@@ -641,6 +639,219 @@
     storeSet("playlists:" + currentUser.toLowerCase(), { playlists, activeId: activePlaylistId });
   }
 
+  function getActivePlaylist(){
+    return playlists.find(p => p.id === activePlaylistId) || null;
+  }
+  function getActiveTracks(){
+    const pl = getActivePlaylist();
+    return pl ? pl.tracks : [];
+  }
+
+  // --- CÁC HÀM XỬ LÝ CHUYỂN BÀI TỰ ĐỘNG & ĐIỀU KHIỂN ---
+  function nextTrack(isAuto = false) {
+    const tracks = getActiveTracks();
+    if (tracks.length === 0) return;
+
+    if (isAuto && loopMode === "one") {
+      // Nếu bật chế độ lặp một bài thì phát lại bài cũ
+      playTrack(currentIndex);
+      return;
+    }
+
+    let nextIdx = currentIndex + 1;
+    // YÊU CẦU: Nếu tới cuối danh sách, quay lên bài đầu
+    if (nextIdx >= tracks.length) {
+      nextIdx = 0;
+    }
+    playTrack(nextIdx);
+  }
+
+  function prevTrack() {
+    const tracks = getActiveTracks();
+    if (tracks.length === 0) return;
+
+    let prevIdx = currentIndex - 1;
+    // Quay lại bài cuối cùng nếu nhấn lùi ở bài đầu tiên
+    if (prevIdx < 0) {
+      prevIdx = tracks.length - 1;
+    }
+    playTrack(prevIdx);
+  }
+
+  // Gọi khi bài hát bất kỳ chạy hết thời lượng
+  function onTrackEnded() {
+    nextTrack(true);
+  }
+
+  function stopEverything(){
+    isPlaying = false;
+    clearInterval(progressTimer);
+    updateWaveAnimation();
+    updatePlayPauseUI();
+    
+    if (ytPlayer && typeof ytPlayer.stopVideo === 'function') {
+      try { ytPlayer.stopVideo(); } catch(e){}
+    }
+    if (spPlayer) {
+      try { spPlayer.contentWindow.postMessage(JSON.stringify({command: 'pause'}), '*'); } catch(e){}
+    }
+  }
+
+  function playTrack(index) {
+    const tracks = getActiveTracks();
+    if (index < 0 || index >= tracks.length) return;
+
+    stopEverything();
+    currentIndex = index;
+    renderPlaylist();
+
+    const track = tracks[currentIndex];
+    updateNowPlaying(track);
+    $("progressWrap").style.display = "flex";
+    $("curTimeLabel").textContent = "0:00";
+    $("durLabel").textContent = "0:00";
+    $("progressBar").value = 0;
+
+    isPlaying = true;
+    updatePlayPauseUI();
+    updateWaveAnimation();
+
+    if (track.type === 'youtube') {
+      if (ytReady && ytPlayer) {
+        ytPlayer.loadVideoById(track.srcId);
+        ytPlayer.setVolume($("volSlider").value);
+        startProgressLoop('youtube');
+      }
+    } else if (track.type === 'spotify') {
+      // Spotify sử dụng Iframe oEmbed
+      const embedUrl = `https://open.spotify.com/embed/track/${track.srcId}?utm_source=generator`;
+      $("spPlayerDiv").innerHTML = `<iframe id="spotifyIframe" src="${embedUrl}" width="100%" height="80" frameBorder="0" allowfullscreen="" allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture" loading="lazy"></iframe>`;
+      spPlayer = $("spotifyIframe");
+      startProgressLoop('spotify');
+    }
+  }
+
+  function togglePlayPause() {
+    const tracks = getActiveTracks();
+    if (tracks.length === 0) return;
+    if (currentIndex === -1) {
+      playTrack(0);
+      return;
+    }
+
+    const track = tracks[currentIndex];
+    if (isPlaying) {
+      isPlaying = false;
+      if (track.type === 'youtube' && ytPlayer) ytPlayer.pauseVideo();
+      if (track.type === 'spotify' && spPlayer) spPlayer.contentWindow.postMessage(JSON.stringify({command: 'pause'}), '*');
+      clearInterval(progressTimer);
+    } else {
+      isPlaying = true;
+      if (track.type === 'youtube' && ytPlayer) ytPlayer.playVideo();
+      if (track.type === 'spotify' && spPlayer) spPlayer.contentWindow.postMessage(JSON.stringify({command: 'play'}), '*');
+      startProgressLoop(track.type);
+    }
+    updatePlayPauseUI();
+    updateWaveAnimation();
+  }
+
+  // Vòng lặp đồng bộ thời gian & thanh Tiến trình (ProgressBar)
+  function startProgressLoop(type) {
+    clearInterval(progressTimer);
+    progressTimer = setInterval(() => {
+      if (!isPlaying || isDraggingProgress) return;
+
+      if (type === 'youtube' && ytPlayer && typeof ytPlayer.getCurrentTime === 'function') {
+        const cur = ytPlayer.getCurrentTime();
+        const dur = ytPlayer.getDuration();
+        if (dur > 0) {
+          $("progressBar").max = Math.floor(dur);
+          $("progressBar").value = Math.floor(cur);
+          $("curTimeLabel").textContent = formatTime(cur);
+          $("durLabel").textContent = formatTime(dur);
+          
+          // Kiểm tra kết thúc bài hát (YouTube State đôi khi trễ, kiểm tra thời gian cho chắc chắn)
+          if (dur - cur < 0.8) {
+            clearInterval(progressTimer);
+            onTrackEnded();
+          }
+        }
+      }
+      // Spotify Embed giới hạn API tương tác sâu nên chủ yếu dùng để xem trước và nhận tín hiệu
+    }, 500);
+  }
+
+  // Lắng nghe thao tác Tua nhạc của người dùng
+  $("progressBar").addEventListener("input", () => {
+    isDraggingProgress = true;
+    $("curTimeLabel").textContent = formatTime($("progressBar").value);
+  });
+
+  $("progressBar").addEventListener("change", () => {
+    isDraggingProgress = false;
+    const tracks = getActiveTracks();
+    if (currentIndex === -1 || tracks.length === 0) return;
+    
+    const track = tracks[currentIndex];
+    const targetSeconds = parseFloat($("progressBar").value);
+
+    if (track.type === 'youtube' && ytPlayer && typeof ytPlayer.seekTo === 'function') {
+      ytPlayer.seekTo(targetSeconds, true);
+    }
+  });
+
+  function updatePlayPauseUI(){
+    if(isPlaying){
+      $("iconPlay").style.display = "none";
+      $("iconPause").style.display = "block";
+    } else {
+      $("iconPlay").style.display = "block";
+      $("iconPause").style.display = "none";
+    }
+  }
+
+  function updateWaveAnimation(){
+    const topWave = $("topWave");
+    const cards = document.querySelectorAll(".authCard .wave-mark");
+    const activeWave = isPlaying ? "playing" : (currentIndex !== -1 ? "paused" : "");
+    
+    [topWave, ...cards].forEach(w => {
+      if(!w) return;
+      w.className = "wave-mark " + activeWave;
+    });
+  }
+
+  function toggleLoopMode() {
+    const btn = $("btnLoop");
+    if (loopMode === "off") {
+      loopMode = "one";
+      btn.classList.remove("loopActive");
+      btn.classList.add("loopOneActive");
+      btn.title = "Đang lặp: 1 bài";
+    } else if (loopMode === "one") {
+      loopMode = "off";
+      btn.classList.remove("loopOneActive");
+      btn.classList.remove("loopActive");
+      btn.title = "Chế độ lặp tự động toàn danh sách";
+    }
+  }
+
+  function updateNowPlaying(track){
+    if(!track){
+      $("npTitle").textContent = "Chưa chọn bài nào";
+      $("npSource").innerHTML = "";
+      $("progressWrap").style.display = "none";
+      return;
+    }
+    $("npTitle").textContent = track.title;
+    if(track.type === 'youtube'){
+      $("npSource").innerHTML = `<span class="srcTag yt">YouTube</span>`;
+    } else {
+      $("npSource").innerHTML = `<span class="srcTag sp">Spotify</span>`;
+    }
+  }
+
+  // --- CÁC HÀM XỬ LÝ PLAYLIST TABS & RENDER ---
   function renderPlaylistTabs(){
     const wrap = $("plTabs");
     wrap.innerHTML = playlists.map(p => `
@@ -760,307 +971,220 @@
     list.innerHTML = tracks.map((t, i) => `
       <div class="plItem ${i===currentIndex?'active':''}" data-idx="${i}">
         <div class="plIndex">${i+1}</div>
-        <div class="plInfo">
-          <div class="plTitle" data-idx="${i}">${escapeHtml(t.title)}</div>
+        <div class="plInfo" data-idx="${i}">
+          <div class="plTitle" id="titleText_${i}">${escapeHtml(t.title)}</div>
           <div class="plSrc">${t.type === 'youtube' ? 'YouTube' : 'Spotify'}</div>
         </div>
-        <button class="plActionBtn rename" data-rename="${i}">
+        <button class="plActionBtn rename" data-idx="${i}" title="Đổi tên bài hát">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
         </button>
-        <button class="plActionBtn del" data-del="${i}">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M6 7h12l-1 14H7L6 7zm3-3h6l1 2H8l1-2z"/></svg>
-        </button>
+        <button class="plActionBtn del" data-idx="${i}" title="Xóa khỏi danh sách">×</button>
       </div>
     `).join("");
 
-    list.querySelectorAll(".plItem").forEach(el => {
-      el.addEventListener("click", (e) => {
+    list.querySelectorAll(".plItem").forEach(item => {
+      item.addEventListener("click", (e) => {
         if(e.target.closest(".plActionBtn")) return;
-        playIndex(parseInt(el.dataset.idx, 10));
+        playTrack(parseInt(item.dataset.idx));
       });
     });
-    list.querySelectorAll("[data-del]").forEach(btn => {
+
+    list.querySelectorAll(".plActionBtn.rename").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        const idx = parseInt(btn.dataset.del, 10);
-        const tr = getActiveTracks();
-        const wasCurrent = idx === currentIndex;
-        tr.splice(idx, 1);
-        if(wasCurrent){ stopEverything(); currentIndex = -1; updateNowPlaying(null); }
-        else if(idx < currentIndex) currentIndex--;
-        saveUserData();
-        renderPlaylist();
+        startRenameTrack(parseInt(btn.dataset.idx));
       });
     });
-    list.querySelectorAll("[data-rename]").forEach(btn => {
+
+    list.querySelectorAll(".plActionBtn.del").forEach(btn => {
       btn.addEventListener("click", (e) => {
         e.stopPropagation();
-        startRenameTrack(parseInt(btn.dataset.rename, 10));
+        deleteTrack(parseInt(btn.dataset.idx));
       });
     });
   }
 
-  function startRenameTrack(idx){
-    const titleEl = document.querySelector('.plTitle[data-idx="' + idx + '"]');
-    if(!titleEl) return;
+  function startRenameTrack(idx) {
     const tracks = getActiveTracks();
-    const input = document.createElement("input");
-    input.className = "plTitleInput";
-    input.value = tracks[idx].title;
-    titleEl.replaceWith(input);
-    input.focus();
-    input.select();
+    const track = tracks[idx];
+    if(!track) return;
+    const titleText = $(`titleText_${idx}`);
+    if(!titleText) return;
+
+    titleText.contentEditable = "true";
+    titleText.focus();
+    window.getSelection().selectAllChildren(titleText);
 
     function finish(save){
-      const newTitle = input.value.trim();
-      if(save && newTitle){ tracks[idx].title = newTitle; saveUserData(); }
-      renderPlaylist();
-      if(idx === currentIndex) updateNowPlaying(tracks[idx]);
-    }
-    input.addEventListener("keydown", e => {
-      if(e.key === "Enter") finish(true);
-      if(e.key === "Escape") finish(false);
-    });
-    input.addEventListener("blur", () => finish(true));
-  }
-
-  $("btnAddLink").addEventListener("click", addLinkHandler);
-  $("inpLink").addEventListener("keydown", e => { if(e.key === "Enter") addLinkHandler(); });
-
-  async function addLinkHandler(){
-    const raw = $("inpLink").value.trim();
-    $("addMsg").textContent = "";
-    if(!raw) return;
-    const tracks = getActiveTracks();
-
-    if(raw.includes("youtu")){
-      const id = extractYouTubeId(raw);
-      if(!id){ $("addMsg").textContent = "Không nhận diện được link YouTube."; return; }
-      let title = "Video YouTube (" + id + ")";
-      try{
-        const res = await fetch("https://www.youtube.com/oembed?url=" + escUrlForOembed(raw) + "&format=json");
-        if(res.ok){ const d = await res.json(); if(d.title) title = d.title; }
-      }catch(e){}
-      tracks.push({ type:"youtube", id, title, url: raw });
-      saveUserData();
-      renderPlaylist();
-      $("inpLink").value = "";
-    } else if(raw.includes("spotify")){
-      const id = extractSpotifyTrackId(raw);
-      if(!id){ $("addMsg").textContent = "Chỉ hỗ trợ link bài hát (track) của Spotify."; return; }
-      let title = "Bài hát Spotify (" + id + ")";
-      try{
-        const res = await fetch("https://open.spotify.com/oembed?url=" + escUrlForOembed(raw));
-        if(res.ok){ const d = await res.json(); if(d.title) title = d.title; }
-      }catch(e){}
-      tracks.push({ type:"spotify", id, title, url: raw });
-      saveUserData();
-      renderPlaylist();
-      $("inpLink").value = "";
-    } else {
-      $("addMsg").textContent = "Chỉ hỗ trợ link YouTube hoặc Spotify.";
-    }
-  }
-
-  let ytPlayer = null, ytReady = false;
-  const ytTag = document.createElement("script");
-  ytTag.src = "https://www.youtube.com/iframe_api";
-  document.head.appendChild(ytTag);
-  window.onYouTubeIframeAPIReady = function(){
-    ytPlayer = new YT.Player("ytPlayerDiv", {
-      height: "1", width: "1",
-      playerVars: { autoplay:0, controls:0, disablekb:1, modestbranding:1, rel:0, iv_load_policy:3 },
-      events: {
-        onReady: () => { ytReady = true; },
-        onStateChange: onYtStateChange
-      }
-    });
-  };
-  function onYtStateChange(e){
-    if(e.data === YT.PlayerState.PLAYING){ isPlaying = true; updatePlayIcon(); startProgressTimer(); }
-    if(e.data === YT.PlayerState.PAUSED){ isPlaying = false; updatePlayIcon(); stopProgressTimer(); }
-    if(e.data === YT.PlayerState.ENDED){ stopProgressTimer(); handleTrackEnd(); }
-  }
-
-  let spController = null, spReady = false, spWasPlaying = false, spEndHandled = false;
-  const spTag = document.createElement("script");
-  spTag.src = "https://open.spotify.com/embed/iframe-api/v1";
-  document.head.appendChild(spTag);
-  window.onSpotifyIframeApiReady = (IFrameAPI) => {
-    IFrameAPI.createController(document.getElementById("spPlayerDiv"), { width: "1", height: "1", uri: "" }, (controller) => {
-      spController = controller;
-      spReady = true;
-      controller.addListener("playback_update", e => {
-        const { isPaused, position, duration } = e.data;
-        isPlaying = !isPaused;
-        updatePlayIcon();
-        updateProgressUI(position/1000, duration/1000);
-        if(!isPaused) { spWasPlaying = true; spEndHandled = false; }
-        if(spWasPlaying && duration > 0 && position >= duration - 400 && isPaused && !spEndHandled){
-          spEndHandled = true;
-          handleTrackEnd();
+      titleText.contentEditable = "false";
+      if(save){
+        const newTitle = titleText.textContent.trim();
+        if(newTitle){ 
+          track.title = newTitle; 
+          if(idx === currentIndex) updateNowPlaying(track);
         }
-      });
+        saveUserData();
+        renderPlaylist();
+      } else {
+        titleText.textContent = track.title;
+      }
+    }
+
+    titleText.addEventListener("keydown", e => {
+      if(e.key === "Enter"){ e.preventDefault(); finish(true); }
+      if(e.key === "Escape"){ e.preventDefault(); finish(false); }
     });
-  };
-
-  function stopEverything(){
-    isPlaying = false;
-    stopProgressTimer();
-    if(ytReady && ytPlayer && ytPlayer.pauseVideo) ytPlayer.pauseVideo();
-    if(spReady && spController) spController.pause();
-    updatePlayIcon();
+    titleText.addEventListener("blur", () => finish(true));
   }
 
-  function updatePlayIcon(){
-    $("iconPlay").style.display = isPlaying ? "none" : "block";
-    $("iconPause").style.display = isPlaying ? "block" : "none";
-    $("topWave").className = "wave-mark" + (isPlaying ? " playing" : " paused");
+  function deleteTrack(idx){
+    const pl = getActivePlaylist();
+    if(!pl) return;
+    
+    const wasPlayingDeleted = (idx === currentIndex);
+    pl.tracks.splice(idx, 1);
+    
+    if(wasPlayingDeleted){
+      stopEverything();
+      currentIndex = -1;
+      updateNowPlaying(null);
+    } else if (idx < currentIndex) {
+      currentIndex--;
+    }
+    
+    saveUserData();
+    renderPlaylist();
   }
 
-  function updateNowPlaying(track){
-    if(!track){
-      $("npTitle").textContent = "Chưa chọn bài nào";
-      $("npSource").innerHTML = "";
-      $("progressWrap").style.display = "none";
+  // --- THÊM LINK NHẠC ---
+  $("btnAddLink").addEventListener("click", addLink);
+  $("inpLink").addEventListener("keydown", e => { if(e.key === "Enter") addLink(); });
+
+  function showAddMsg(msg, isErr=true){
+    $("addMsg").textContent = msg;
+    $("addMsg").style.color = isErr ? "var(--coral)" : "var(--blue-neon)";
+    setTimeout(() => $("addMsg").textContent = "", 5000);
+  }
+
+  function addLink(){
+    const url = $("inpLink").value.trim();
+    if(!url) return;
+
+    const ytId = extractYouTubeId(url);
+    const spId = extractSpotifyTrackId(url);
+    const pl = getActivePlaylist();
+
+    if(!pl){
+      showAddMsg("Không tìm thấy danh sách phát hoạt động.");
       return;
     }
-    $("npTitle").textContent = track.title;
-    $("npSource").innerHTML = `<span class="srcTag ${track.type==='youtube'?'yt':'sp'}">${track.type==='youtube'?'YouTube':'Spotify'}</span>`;
-    $("progressWrap").style.display = "flex";
-  }
 
-  function updateProgressUI(current, duration){
-    const bar = $("progressBar");
-    if(duration > 0){ bar.max = duration; bar.value = current; }
-    $("curTimeLabel").textContent = formatTime(current);
-    $("durLabel").textContent = formatTime(duration);
-  }
+    if(ytId){
+      const newTrack = { id: genId(), type: 'youtube', srcId: ytId, title: 'Đang tải thông tin từ YouTube...' };
+      pl.tracks.push(newTrack);
+      saveUserData();
+      renderPlaylist();
+      $("inpLink").value = "";
+      
+      // Lấy tiêu đề Oembed tự động
+      fetch(`https://www.youtube.com/oembed?url=https://www.youtube.com/watch?v=${ytId}&format=json`)
+        .then(res => res.json())
+        .then(data => {
+          newTrack.title = data.title || "Bài hát YouTube";
+          saveUserData();
+          renderPlaylist();
+          if(currentIndex !== -1 && getActiveTracks()[currentIndex].id === newTrack.id) updateNowPlaying(newTrack);
+        })
+        .catch(() => {
+          newTrack.title = "Bài hát YouTube Video (" + ytId + ")";
+          saveUserData();
+          renderPlaylist();
+        });
+    } 
+    else if(spId){
+      const newTrack = { id: genId(), type: 'spotify', srcId: spId, title: 'Đang tải thông tin từ Spotify...' };
+      pl.tracks.push(newTrack);
+      saveUserData();
+      renderPlaylist();
+      $("inpLink").value = "";
 
-  function startProgressTimer(){
-    stopProgressTimer();
-    progressTimer = setInterval(() => {
-      const tracks = getActiveTracks();
-      const track = tracks[currentIndex];
-      if(track && track.type === "youtube" && ytReady && ytPlayer && ytPlayer.getCurrentTime){
-        updateProgressUI(ytPlayer.getCurrentTime(), ytPlayer.getDuration());
-      }
-    }, 500);
-  }
-  function stopProgressTimer(){
-    if(progressTimer){ clearInterval(progressTimer); progressTimer = null; }
-  }
-
-  $("progressBar").addEventListener("input", () => {
-    const tracks = getActiveTracks();
-    const track = tracks[currentIndex];
-    if(!track) return;
-    const t = parseFloat($("progressBar").value);
-    if(track.type === "youtube" && ytReady && ytPlayer && ytPlayer.seekTo){
-      ytPlayer.seekTo(t, true);
-    } else if(track.type === "spotify" && spReady && spController && spController.seek){
-      spController.seek(t);
-    }
-  });
-
-  function playIndex(i){
-    const tracks = getActiveTracks();
-    if(i < 0 || i >= tracks.length) return;
-    if(ytReady && ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
-    if(spReady && spController) spController.pause();
-    stopProgressTimer();
-
-    currentIndex = i;
-    const track = tracks[i];
-    updateNowPlaying(track);
-    updateProgressUI(0, 0);
-    renderPlaylist();
-
-    if(track.type === "youtube"){
-      if(!ytReady){ setTimeout(()=>playIndex(i), 400); return; }
-      ytPlayer.loadVideoById(track.id);
-      ytPlayer.setVolume(parseInt($("volSlider").value,10));
-      isPlaying = true; updatePlayIcon(); startProgressTimer();
-    } else {
-      if(!spReady){ setTimeout(()=>playIndex(i), 400); return; }
-      spEndHandled = false; spWasPlaying = false;
-      spController.loadUri("spotify:track:" + track.id);
-      spController.play();
-      isPlaying = true; updatePlayIcon();
+      fetch(`https://open.spotify.com/oembed?url=spotify:track:${spId}`)
+        .then(res => res.json())
+        .then(data => {
+          newTrack.title = data.title || "Bài hát Spotify";
+          saveUserData();
+          renderPlaylist();
+          if(currentIndex !== -1 && getActiveTracks()[currentIndex].id === newTrack.id) updateNowPlaying(newTrack);
+        })
+        .catch(() => {
+          newTrack.title = "Bài hát Spotify Track";
+          saveUserData();
+          renderPlaylist();
+        });
+    } 
+    else {
+      showAddMsg("Đường dẫn không hợp lệ. Vui lòng dán link YouTube hoặc Spotify chính xác.");
     }
   }
 
-  function handleTrackEnd(){
-    const tracks = getActiveTracks();
-    if(loopMode === "one"){ playIndex(currentIndex); return; }
-    let next = currentIndex + 1;
-    if(next >= tracks.length){
-      if(loopMode === "all") next = 0;
-      else { isPlaying = false; updatePlayIcon(); return; }
-    }
-    playIndex(next);
-  }
-
-  $("btnPlayPause").addEventListener("click", () => {
-    const tracks = getActiveTracks();
-    if(currentIndex === -1){ if(tracks.length > 0) playIndex(0); return; }
-    const track = tracks[currentIndex];
-    if(track.type === "youtube" && ytReady){
-      if(isPlaying) ytPlayer.pauseVideo(); else ytPlayer.playVideo();
-    } else if(track.type === "spotify" && spReady){
-      if(isPlaying) spController.pause(); else spController.resume ? spController.resume() : spController.play();
-    }
-  });
-
-  $("btnNext").addEventListener("click", () => {
-    const tracks = getActiveTracks();
-    if(tracks.length === 0) return;
-    let next = currentIndex + 1;
-    if(next >= tracks.length) next = loopMode === "all" ? 0 : tracks.length - 1;
-    playIndex(next);
-  });
-  $("btnPrev").addEventListener("click", () => {
-    const tracks = getActiveTracks();
-    if(tracks.length === 0) return;
-    let prev = currentIndex - 1;
-    if(prev < 0) prev = loopMode === "all" ? tracks.length - 1 : 0;
-    playIndex(prev);
-  });
-
-  $("btnLoop").addEventListener("click", () => {
-    if(loopMode === "off") loopMode = "all";
-    else if(loopMode === "all") loopMode = "one";
-    else loopMode = "off";
-    const btn = $("btnLoop");
-    btn.classList.remove("loopActive", "loopOneActive");
-    if(loopMode === "all") btn.classList.add("loopActive");
-    if(loopMode === "one") btn.classList.add("loopOneActive");
-  });
-
-  $("volSlider").addEventListener("input", (e) => {
-    const v = parseInt(e.target.value, 10);
-    if(ytReady && ytPlayer && ytPlayer.setVolume) ytPlayer.setVolume(v);
-    if(spReady && spController && spController.setVolume) spController.setVolume(v/100);
-  });
-
+  // --- HỆ THỐNG ĐIỀU HƯỚNG MÀN HÌNH ---
   function enterApp(){
-    $("userNameLabel").textContent = currentUser;
     $("authScreen").classList.remove("active");
     $("appScreen").classList.add("active");
+    $("userNameLabel").textContent = currentUser;
     loadUserData();
     renderPlaylistTabs();
     renderPlaylist();
   }
 
-  function boot(){
-    const session = storeGet("session:current");
-    if(session && session.username){
-      const acc = storeGet("account:" + session.username.toLowerCase());
-      if(acc){ currentUser = acc.username; enterApp(); return; }
+  // --- KHỞI TẠO API YOUTUBE (IFRAME PLAYER API) ---
+  window.onYouTubeIframeAPIReady = function() {
+    ytPlayer = new YT.Player('ytPlayerDiv', {
+      height: '1', width: '1',
+      videoId: '',
+      playerVars: { 'autoplay': 0, 'controls': 0, 'disablekb': 1, 'fs': 0, 'rel': 0 },
+      events: {
+        'onReady': () => { ytReady = true; },
+        'onStateChange': (e) => {
+          // YT.PlayerState.ENDED = 0
+          if(e.data === 0) {
+            onTrackEnded();
+          }
+        }
+      }
+    });
+  };
+
+  // Tải ngầm thư viện YouTube API
+  const tag = document.createElement('script');
+  tag.src = "https://www.youtube.com/iframe_api";
+  const firstScriptTag = document.getElementsByTagName('script')[0];
+  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+  // Điều khiển Âm lượng (Volume)
+  $("volSlider").addEventListener("input", () => {
+    const vol = $("volSlider").value;
+    if(ytPlayer && typeof ytPlayer.setVolume === 'function') {
+      ytPlayer.setVolume(vol);
     }
+    // Ghi chú: Trình nhúng Spotify Iframe không hỗ trợ thay đổi volume qua API PostMessage
+  });
+
+  // Gán sự kiện cho các nút Controls chính
+  $("btnPlayPause").addEventListener("click", togglePlayPause);
+  $("btnNext").addEventListener("click", () => nextTrack(false));
+  $("btnPrev").addEventListener("click", prevTrack);
+  $("btnLoop").addEventListener("click", toggleLoopMode);
+
+  // Kiểm tra phiên đăng nhập cũ
+  const session = storeGet("session:current");
+  if(session && session.username){
+    currentUser = session.username;
+    enterApp();
+  } else {
     setAuthMode("login");
   }
-  boot();
+
 })();
 </script>
 </body>
