@@ -750,8 +750,13 @@
         showLoader();
         setTimeout(() => { enterApp(); hideLoader(); btn.disabled = false; btn.textContent = prevLabel; }, 1000);
       } else {
-        if(!existing || existing.passwordHash !== hash(pass)){
-          $("authMsg").textContent = "Tên đăng nhập hoặc mật khẩu không đúng.";
+        if(!existing){
+          $("authMsg").textContent = "Tài khoản \"" + uname + "\" chưa tồn tại — hãy bấm \"Đăng ký ngay\" bên dưới để tạo tài khoản này trước.";
+          btn.disabled = false; btn.textContent = prevLabel;
+          return;
+        }
+        if(existing.passwordHash !== hash(pass)){
+          $("authMsg").textContent = "Sai mật khẩu cho tài khoản \"" + existing.username + "\".";
           btn.disabled = false; btn.textContent = prevLabel;
           return;
         }
