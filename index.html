@@ -725,46 +725,45 @@
     btn.textContent = "Đang kiểm tra...";
     $("authMsg").textContent = "";
 
-    // Accounts are stored in SHARED storage so the username is checked
-    // against every account ever created on this app, not just the ones
-    // created in this browser. This is what makes duplicate usernames
-    // actually impossible, including across different devices/people.
-    const key = "account:" + uname.toLowerCase();
-    let existing;
     try {
-      existing = await storeGet(key, true);
-    } catch(e){
-      $("authMsg").textContent = "Không thể kết nối để kiểm tra tài khoản, thử lại sau.";
-      btn.disabled = false; btn.textContent = prevLabel;
-      return;
-    }
+      // Accounts are stored in SHARED storage so the username is checked
+      // against every account ever created on this app, not just the ones
+      // created in this browser. This is what makes duplicate usernames
+      // actually impossible, including across different devices/people.
+      const key = "account:" + uname.toLowerCase();
+      const existing = await storeGet(key, true);
 
-    if(authMode === "register"){
-      if(existing){
-        $("authMsg").textContent = "Tên đăng nhập \"" + uname + "\" đã có người dùng trước đó, hãy chọn tên khác.";
-        btn.disabled = false; btn.textContent = prevLabel;
-        return;
+      if(authMode === "register"){
+        if(existing){
+          $("authMsg").textContent = "Tên đăng nhập \"" + uname + "\" đã có người dùng trước đó, hãy chọn tên khác.";
+          btn.disabled = false; btn.textContent = prevLabel;
+          return;
+        }
+        const saved = await storeSet(key, { username: uname, passwordHash: hash(pass) }, true);
+        if(!saved){
+          $("authMsg").textContent = "Có lỗi khi lưu tài khoản (storeSet trả về rỗng). Chế độ lưu trữ đang dùng: " + (hasCloudStorage ? "cloud" : "localStorage") + ".";
+          btn.disabled = false; btn.textContent = prevLabel;
+          return;
+        }
+        await storeSet("session:current", { username: uname }, false);
+        currentUser = uname;
+        showLoader();
+        setTimeout(() => { enterApp(); hideLoader(); btn.disabled = false; btn.textContent = prevLabel; }, 1000);
+      } else {
+        if(!existing || existing.passwordHash !== hash(pass)){
+          $("authMsg").textContent = "Tên đăng nhập hoặc mật khẩu không đúng.";
+          btn.disabled = false; btn.textContent = prevLabel;
+          return;
+        }
+        await storeSet("session:current", { username: existing.username }, false);
+        currentUser = existing.username;
+        showLoader();
+        setTimeout(() => { enterApp(); hideLoader(); btn.disabled = false; btn.textContent = prevLabel; }, 1000);
       }
-      const saved = await storeSet(key, { username: uname, passwordHash: hash(pass) }, true);
-      if(!saved){
-        $("authMsg").textContent = "Có lỗi khi tạo tài khoản, thử lại sau.";
-        btn.disabled = false; btn.textContent = prevLabel;
-        return;
-      }
-      await storeSet("session:current", { username: uname }, false);
-      currentUser = uname;
-      showLoader();
-      setTimeout(() => { enterApp(); hideLoader(); btn.disabled = false; btn.textContent = prevLabel; }, 1000);
-    } else {
-      if(!existing || existing.passwordHash !== hash(pass)){
-        $("authMsg").textContent = "Tên đăng nhập hoặc mật khẩu không đúng.";
-        btn.disabled = false; btn.textContent = prevLabel;
-        return;
-      }
-      await storeSet("session:current", { username: existing.username }, false);
-      currentUser = existing.username;
-      showLoader();
-      setTimeout(() => { enterApp(); hideLoader(); btn.disabled = false; btn.textContent = prevLabel; }, 1000);
+    } catch(err){
+      console.error(err);
+      $("authMsg").textContent = "Lỗi: " + (err && err.message ? err.message : String(err)) + " (chế độ lưu trữ: " + (hasCloudStorage ? "cloud" : "localStorage") + ")";
+      btn.disabled = false; btn.textContent = prevLabel;
     }
   });
 
