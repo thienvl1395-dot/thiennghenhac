@@ -369,6 +369,15 @@
       <div class="err" id="errPass"></div>
     </div>
 
+    <!-- Ô NHẬP LẠI MẬT KHẨU (CHỈ HIỆN KHI ĐĂNG KÝ) -->
+    <div class="field" id="fieldConfirmPass" style="display:none;">
+      <label>Nhập lại mật khẩu</label>
+      <div class="pass-wrapper">
+        <input id="inpConfirmPass" type="password" placeholder="Trùng khớp với mật khẩu trên">
+      </div>
+      <div class="err" id="errConfirmPass"></div>
+    </div>
+
     <button class="btnPrimary" id="btnSubmitAuth">Đăng nhập</button>
     <div class="authMsg" id="authMsg"></div>
     <div class="switchAuth" id="switchAuthRow">
@@ -538,17 +547,21 @@
     $("authMsg").textContent = "";
     $("errUser").classList.remove("show");
     $("errPass").classList.remove("show");
+    $("errConfirmPass").classList.remove("show");
     $("inpPass").type = "password";
+    $("inpConfirmPass").value = "";
     $("eyeIcon").innerHTML = '<path d="' + eyeOpenPath + '"/>';
 
     if(mode === "login"){
       $("authSubText").textContent = "Đăng nhập để lưu danh sách phát của riêng bạn.";
       $("btnSubmitAuth").textContent = "Đăng nhập";
+      $("fieldConfirmPass").style.display = "none";
       $("switchAuthRow").innerHTML = 'Chưa có tài khoản? <a id="linkToRegister">Đăng ký ngay</a>';
       $("linkToRegister").onclick = () => setAuthMode("register");
     } else {
       $("authSubText").textContent = "Tạo tài khoản mới để bắt đầu lưu nhạc yêu thích.";
       $("btnSubmitAuth").textContent = "Đăng ký";
+      $("fieldConfirmPass").style.display = "block";
       $("switchAuthRow").innerHTML = 'Đã có tài khoản? <a id="linkToRegister">Đăng nhập</a>';
       $("linkToRegister").onclick = () => setAuthMode("login");
     }
@@ -574,6 +587,19 @@
     } else {
       $("errPass").classList.remove("show");
     }
+
+    // Logic kiểm tra Nhập lại mật khẩu khi Đăng ký
+    if(authMode === "register"){
+      const cpass = $("inpConfirmPass").value;
+      if(cpass !== pass){
+        $("errConfirmPass").textContent = "Mật khẩu nhập lại không khớp.";
+        $("errConfirmPass").classList.add("show");
+        ok = false;
+      } else {
+        $("errConfirmPass").classList.remove("show");
+      }
+    }
+
     if(!ok) return;
 
     const key = "account:" + uname.toLowerCase();
@@ -607,13 +633,14 @@
     $("authScreen").classList.add("active");
     $("inpUser").value = "";
     $("inpPass").value = "";
+    $("inpConfirmPass").value = "";
     setAuthMode("login");
   });
 
   let playlists = [];
   let activePlaylistId = null;
   let currentIndex = -1;
-  let loopMode = "off";
+  let loopMode = "all"; // Mặc định để chế độ phát lặp toàn bộ playlist
   let isPlaying = false;
   let progressTimer = null;
 
@@ -990,13 +1017,15 @@
     }
   }
 
+  // SỬA ĐÂY: Logic tự động nhảy bài khi kết thúc và cuộn lên đầu khi hết danh sách
   function handleTrackEnd(){
     const tracks = getActiveTracks();
+    if(tracks.length === 0) return;
     if(loopMode === "one"){ playIndex(currentIndex); return; }
+    
     let next = currentIndex + 1;
     if(next >= tracks.length){
-      if(loopMode === "all") next = 0;
-      else { isPlaying = false; updatePlayIcon(); return; }
+      next = 0; // Đạt đến bài cuối cùng thì nhảy lên bài trên cùng
     }
     playIndex(next);
   }
@@ -1012,18 +1041,19 @@
     }
   });
 
+  // SỬA ĐÂY: Nút bấm Next/Prev cũng tuân thủ vòng lặp cuộn danh sách liên tục
   $("btnNext").addEventListener("click", () => {
     const tracks = getActiveTracks();
     if(tracks.length === 0) return;
     let next = currentIndex + 1;
-    if(next >= tracks.length) next = loopMode === "all" ? 0 : tracks.length - 1;
+    if(next >= tracks.length) next = 0;
     playIndex(next);
   });
   $("btnPrev").addEventListener("click", () => {
     const tracks = getActiveTracks();
     if(tracks.length === 0) return;
     let prev = currentIndex - 1;
-    if(prev < 0) prev = loopMode === "all" ? tracks.length - 1 : 0;
+    if(prev < 0) prev = tracks.length - 1;
     playIndex(prev);
   });
 
@@ -1036,6 +1066,9 @@
     if(loopMode === "all") btn.classList.add("loopActive");
     if(loopMode === "one") btn.classList.add("loopOneActive");
   });
+
+  // Kích hoạt style nút lặp sáng lên ngay từ đầu vì mặc định là lặp toàn danh sách (all)
+  $("btnLoop").classList.add("loopActive");
 
   $("volSlider").addEventListener("input", (e) => {
     const v = parseInt(e.target.value, 10);
