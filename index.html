@@ -576,15 +576,35 @@
     return min + ":" + sec;
   }
 
+  // window.storage only exists when this page is running inside Claude's
+  // artifact viewer. If the file was downloaded and opened directly in a
+  // browser (or hosted elsewhere), it won't exist — so we fall back to
+  // localStorage in that case, otherwise registration/login would silently
+  // fail every time.
+  const hasCloudStorage = (typeof window !== "undefined") && !!window.storage
+    && typeof window.storage.get === "function" && typeof window.storage.set === "function";
+
   async function storeGet(key, shared){
+    if(hasCloudStorage){
+      try {
+        const res = await window.storage.get(key, !!shared);
+        return res ? JSON.parse(res.value) : null;
+      } catch(e) { return null; }
+    }
     try {
-      const res = await window.storage.get(key, !!shared);
-      return res ? JSON.parse(res.value) : null;
+      const val = localStorage.getItem(key);
+      return val ? JSON.parse(val) : null;
     } catch(e) { return null; }
   }
   async function storeSet(key, value, shared){
+    if(hasCloudStorage){
+      try {
+        return await window.storage.set(key, JSON.stringify(value), !!shared);
+      } catch(e) { console.error("storage set failed", e); return null; }
+    }
     try {
-      return await window.storage.set(key, JSON.stringify(value), !!shared);
+      localStorage.setItem(key, JSON.stringify(value));
+      return { key, value, shared: !!shared };
     } catch(e) { console.error("storage set failed", e); return null; }
   }
 
