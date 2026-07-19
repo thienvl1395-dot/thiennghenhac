@@ -420,6 +420,7 @@
       <div class="brand">Thien</div>
     </div>
     <p class="authSub" id="authSubText">Đăng nhập để lưu danh sách phát của riêng bạn.</p>
+    <p class="authSub" id="storageModeLabel" style="margin-top:-20px; font-size:11px; opacity:.7;"></p>
 
     <div class="field">
       <label>Tên đăng nhập</label>
@@ -557,6 +558,23 @@
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.2.0/crypto-js.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  // ===================== CẤU HÌNH FIREBASE =====================
+  // Dán config của bạn (Firebase Console > Project settings > SDK setup
+  // and configuration) vào đây để tài khoản dùng chung được mọi thiết bị.
+  // Nếu để nguyên "YOUR_API_KEY" thì web sẽ tự chuyển về lưu cục bộ
+  // trong từng trình duyệt (không đồng bộ được giữa các máy).
+  window.THIEN_FIREBASE_CONFIG = {
+    apiKey: "YOUR_API_KEY",
+    authDomain: "YOUR_PROJECT.firebaseapp.com",
+    projectId: "YOUR_PROJECT_ID",
+    storageBucket: "YOUR_PROJECT.appspot.com",
+    messagingSenderId: "YOUR_SENDER_ID",
+    appId: "YOUR_APP_ID"
+  };
+</script>
 <script>
 (function(){
   "use strict";
@@ -576,15 +594,42 @@
     return min + ":" + sec;
   }
 
-  // window.storage only exists when this page is running inside Claude's
-  // artifact viewer. If the file was downloaded and opened directly in a
-  // browser (or hosted elsewhere), it won't exist — so we fall back to
-  // localStorage in that case, otherwise registration/login would silently
-  // fail every time.
-  const hasCloudStorage = (typeof window !== "undefined") && !!window.storage
+  // Storage priority:
+  // 1) Firebase Firestore — a real cloud database, works across every
+  //    device/browser/profile. Used only if THIEN_FIREBASE_CONFIG above
+  //    has been filled in with a real project.
+  // 2) window.storage — only exists when this page runs inside Claude's
+  //    own artifact viewer.
+  // 3) localStorage — last resort; only visible inside the one browser
+  //    profile that created it, does NOT sync across devices.
+  let firebaseReady = false;
+  let fsDb = null;
+  try {
+    const cfg = window.THIEN_FIREBASE_CONFIG;
+    if (typeof firebase !== "undefined" && cfg && cfg.apiKey && cfg.apiKey !== "YOUR_API_KEY") {
+      firebase.initializeApp(cfg);
+      fsDb = firebase.firestore();
+      firebaseReady = true;
+    }
+  } catch(e){ console.error("Firebase init failed", e); firebaseReady = false; }
+
+  const hasCloudStorage = !firebaseReady && (typeof window !== "undefined") && !!window.storage
     && typeof window.storage.get === "function" && typeof window.storage.set === "function";
 
+  function storageMode(){
+    return firebaseReady ? "firebase" : (hasCloudStorage ? "claude-cloud" : "localStorage (không đồng bộ thiết bị khác)");
+  }
+  function fsDocId(key){ return key.replace(/[\/]/g, "__"); }
+
   async function storeGet(key, shared){
+    if(firebaseReady){
+      try {
+        const doc = await fsDb.collection("thien_kv").doc(fsDocId(key)).get();
+        if(!doc.exists) return null;
+        const data = doc.data();
+        return data && data.value !== undefined ? JSON.parse(data.value) : null;
+      } catch(e){ console.error("Firestore get failed", e); throw e; }
+    }
     if(hasCloudStorage){
       try {
         const res = await window.storage.get(key, !!shared);
@@ -597,6 +642,12 @@
     } catch(e) { return null; }
   }
   async function storeSet(key, value, shared){
+    if(firebaseReady){
+      try {
+        await fsDb.collection("thien_kv").doc(fsDocId(key)).set({ value: JSON.stringify(value) });
+        return { key, value };
+      } catch(e){ console.error("Firestore set failed", e); return null; }
+    }
     if(hasCloudStorage){
       try {
         return await window.storage.set(key, JSON.stringify(value), !!shared);
@@ -741,7 +792,7 @@
         }
         const saved = await storeSet(key, { username: uname, passwordHash: hash(pass) }, true);
         if(!saved){
-          $("authMsg").textContent = "Có lỗi khi lưu tài khoản (storeSet trả về rỗng). Chế độ lưu trữ đang dùng: " + (hasCloudStorage ? "cloud" : "localStorage") + ".";
+          $("authMsg").textContent = "Có lỗi khi lưu tài khoản (storeSet trả về rỗng). Chế độ lưu trữ đang dùng: " + storageMode() + ".";
           btn.disabled = false; btn.textContent = prevLabel;
           return;
         }
@@ -767,7 +818,7 @@
       }
     } catch(err){
       console.error(err);
-      $("authMsg").textContent = "Lỗi: " + (err && err.message ? err.message : String(err)) + " (chế độ lưu trữ: " + (hasCloudStorage ? "cloud" : "localStorage") + ")";
+      $("authMsg").textContent = "Lỗi: " + (err && err.message ? err.message : String(err)) + " (chế độ lưu trữ: " + storageMode() + ")";
       btn.disabled = false; btn.textContent = prevLabel;
     }
   });
@@ -1290,6 +1341,8 @@
   }
 
   function boot(){
+    const modeLabel = $("storageModeLabel");
+    if(modeLabel) modeLabel.textContent = "Lưu trữ: " + storageMode();
     setTimeout(async () => {
       const session = await storeGet("session:current", false);
       if(session && session.username){
