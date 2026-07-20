@@ -54,9 +54,7 @@
   button{font-family:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent;}
   a{touch-action:manipulation;}
   ::selection{background:var(--blue-glow); color: var(--blue-neon);}
-  /* Only apply hover effects on devices that actually support hovering
-     (mouse/trackpad). Prevents buttons/rows staying visually "stuck" in
-     the hover state after a tap on touch screens. */
+  
   @media (hover:hover) and (pointer:fine){
     .hoverable-scope{ }
   }
