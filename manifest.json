@@ -2,7 +2,7 @@
   "name": "Thien Music",
   "short_name": "Thien",
   "description": "Nghe nhạc YouTube & Spotify, lưu playlist riêng.",
-  "start_url": "./thien-music.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
