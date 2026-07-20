@@ -1,13 +1,6 @@
-// Service worker riêng cho Thien Music.
-// Mục đích: (1) đủ điều kiện để trình duyệt cho "Cài đặt ứng dụng" (thêm ra
-// màn hình chính, chạy toàn màn hình như app thật), (2) cache lại phần vỏ
-// app (HTML/manifest/icon) để mở lại nhanh hơn và có thể mở khi mất mạng.
-// Service worker KHÔNG có khả năng "ép" nhạc phát nền — việc đó phụ thuộc
-// vào Media Session + chính sách của Chrome/hệ điều hành, không phải SW.
-
-const CACHE_NAME = "thien-music-shell-v1";
+const CACHE_NAME = "thien-music-shell-v2";
 const SHELL_FILES = [
-  "./thien-music.html",
+  "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
@@ -30,9 +23,6 @@ self.addEventListener("activate", (event) => {
   );
 });
 
-// Chỉ can thiệp cache cho các file thuộc vỏ app của chính mình (GET, cùng
-// origin). Mọi request khác (YouTube/Spotify iframe, Firestore, oEmbed...)
-// đi thẳng ra mạng như bình thường, không đụng vào.
 self.addEventListener("fetch", (event) => {
   const req = event.request;
   if (req.method !== "GET") return;
