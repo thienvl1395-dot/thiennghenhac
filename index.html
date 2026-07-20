@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
 <title>Nghe nhạc</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#00d2ff">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Thien">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -559,6 +567,7 @@
       </div>
       <div class="userChip">
         Xin chào, <b id="userNameLabel"></b>
+        <button class="logoutBtn" id="btnInstallApp" style="display:none;" title="Cài đặt ra màn hình chính để phát nền tốt hơn">📲 Cài app</button>
         <button class="logoutBtn" id="btnBgSettings" title="Đổi ảnh nền">Đổi nền</button>
         <button class="logoutBtn" id="btnLogout">Đăng xuất</button>
       </div>
@@ -647,7 +656,7 @@
       Với Spotify, bài hát phát qua trình nhúng chính thức của Spotify: nếu bạn đã đăng nhập Spotify (đặc biệt là Premium) trong cùng trình duyệt, bài hát sẽ phát đầy đủ; nếu chưa, chỉ nghe được đoạn xem trước ngắn.
       Bạn có thể tạo nhiều danh sách phát khác nhau và đặt lại tên cho từng bài hát theo ý muốn.
       <br><br>
-      <b>Về việc phát nhạc khi thoát Chrome:</b> Trang đã bật Media Session, nên khi bạn khóa màn hình hoặc chuyển sang app khác, màn hình khóa/thanh thông báo sẽ hiện nút phát/dừng/bài trước/bài sau, và Chrome sẽ cố duy trì tab đang phát nhạc lâu hơn bình thường. Tuy vậy đây chỉ là "cố gắng tối đa", không phải cam kết tuyệt đối: nếu bạn <b>đóng hẳn Chrome</b> (vuốt tắt khỏi danh sách app gần đây) nhạc sẽ dừng — không có website nào phát được nhạc khi trình duyệt đã bị tắt hẳn. Ngoài ra, YouTube thường tự tạm dừng video nhúng khi rời khỏi tab trên di động (trừ khi có YouTube Premium), nên với YouTube khả năng phát nền sẽ kém ổn định hơn Spotify.
+      <b>Về việc phát nhạc khi thoát Chrome:</b> Trang đã bật Media Session (điều khiển phát/dừng/tua ngay trên màn hình khóa và tai nghe Bluetooth) và có thể <b>cài ra màn hình chính</b> bằng nút "📲 Cài app" ở trên — sau khi cài, hãy mở app từ icon trên màn hình chính (không mở qua trình duyệt) để có trải nghiệm gần giống app nhạc thật (toàn màn hình, ít bị hệ điều hành tắt nền hơn). Đây vẫn là "cố gắng tối đa" của nền web, không phải cam kết tuyệt đối: nếu bạn <b>đóng hẳn ứng dụng</b> (vuốt tắt khỏi danh sách app gần đây) nhạc sẽ dừng — không có website/PWA nào phát được nhạc khi đã bị tắt hẳn. Trên iPhone, khả năng phát nền kém ổn định hơn Android. Riêng YouTube thường tự tạm dừng khi rời app trên di động (trừ khi có YouTube Premium), nên với YouTube khả năng phát nền sẽ kém ổn định hơn Spotify.
     </div>
   </div>
 </div>
@@ -1429,6 +1438,42 @@
     try {
       navigator.mediaSession.setActionHandler("stop", () => stopEverything());
     } catch(e){ /* not supported everywhere */ }
+    try {
+      navigator.mediaSession.setActionHandler("seekbackward", (details) => seekRelative(-(details.seekOffset || 10)));
+      navigator.mediaSession.setActionHandler("seekforward", (details) => seekRelative(details.seekOffset || 10));
+      navigator.mediaSession.setActionHandler("seekto", (details) => {
+        if(details.fastSeek) return;
+        seekAbsolute(details.seekTime);
+      });
+    } catch(e){ /* seek handlers not supported everywhere (older iOS Safari) */ }
+  }
+  function seekRelative(deltaSeconds){
+    const tracks = getActiveTracks();
+    const track = tracks[currentIndex];
+    if(!track) return;
+    const cur = parseFloat($("progressBar").value) || 0;
+    seekAbsolute(Math.max(0, cur + deltaSeconds));
+  }
+  function seekAbsolute(t){
+    const tracks = getActiveTracks();
+    const track = tracks[currentIndex];
+    if(!track) return;
+    if(track.type === "youtube" && ytReady && ytPlayer && ytPlayer.seekTo){
+      ytPlayer.seekTo(t, true);
+    } else if(track.type === "spotify" && spReady && spController && spController.seek){
+      spController.seek(t);
+    }
+  }
+  function updateMediaSessionPosition(current, duration){
+    if(!hasMediaSession || !("setPositionState" in navigator.mediaSession)) return;
+    if(!isFinite(duration) || duration <= 0) return;
+    try {
+      navigator.mediaSession.setPositionState({
+        duration: duration,
+        playbackRate: 1,
+        position: Math.min(Math.max(current, 0), duration)
+      });
+    } catch(e){ /* ignore transient errors (e.g. duration changed mid-update) */ }
   }
 
   function updateProgressUI(current, duration){
@@ -1436,6 +1481,7 @@
     if(duration > 0){ bar.max = duration; bar.value = current; }
     $("curTimeLabel").textContent = formatTime(current);
     $("durLabel").textContent = formatTime(duration);
+    updateMediaSessionPosition(current, duration);
   }
 
   function startProgressTimer(){
@@ -1597,6 +1643,48 @@
     await loadBackground();
     renderPlaylistTabs();
     renderPlaylist();
+  }
+
+  // ===================== PWA: cài ra màn hình chính =====================
+  // Cài app (Add to Home Screen) khiến trang chạy toàn màn hình, không có
+  // thanh địa chỉ trình duyệt, và trên Android nói chung sẽ được hệ điều
+  // hành đối xử gần giống app thật hơn khi đang phát nhạc nền — đây là
+  // cách tốt nhất trên nền web để tiến gần tới trải nghiệm kiểu Zing MP3.
+  if("serviceWorker" in navigator){
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js").catch((e) => console.warn("SW register failed", e));
+    });
+  }
+
+  let deferredInstallPrompt = null;
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if(!isStandalone) $("btnInstallApp").style.display = "inline-block";
+  });
+
+  $("btnInstallApp").addEventListener("click", async () => {
+    if(deferredInstallPrompt){
+      deferredInstallPrompt.prompt();
+      await deferredInstallPrompt.userChoice;
+      deferredInstallPrompt = null;
+      $("btnInstallApp").style.display = "none";
+      return;
+    }
+    if(isIOS){
+      await showConfirm(
+        "Cài ra màn hình chính",
+        "Trên iPhone: chạm nút Chia sẻ (hình vuông có mũi tên) ở thanh trình duyệt, sau đó chọn \"Thêm vào MH chính\". Sau khi cài, mở app từ màn hình chính (không mở qua Safari) để nhạc chạy nền ổn định hơn.",
+        "Đã hiểu"
+      );
+    }
+  });
+
+  if(isIOS && !isStandalone){
+    $("btnInstallApp").style.display = "inline-block";
   }
 
   function boot(){
