@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, viewport-fit=cover">
-<title>Thien — nghe nhạc chỉ âm thanh</title>
+<title>Nghe nhạc</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -681,13 +682,6 @@
   //    own artifact viewer.
   // 3) localStorage — last resort; only visible inside the one browser
   //    profile that created it, does NOT sync across devices.
-  //
-  // QUAN TRỌNG: khoá "session:current" (ai đang đăng nhập TRÊN TRÌNH DUYỆT
-  // NÀY) không bao giờ được đi qua Firestore/window.storage dùng chung —
-  // nếu không, người mở link ở máy khác sẽ đọc được session của người khác
-  // và tự động bị đăng nhập vào tài khoản của họ. Khoá này luôn được ép
-  // dùng localStorage của riêng từng trình duyệt, xử lý ngay đầu
-  // storeGet/storeSet bên dưới, trước khi chạm tới Firebase.
   let firebaseReady = false;
   let fsDb = null;
   try {
@@ -702,23 +696,12 @@
   const hasCloudStorage = !firebaseReady && (typeof window !== "undefined") && !!window.storage
     && typeof window.storage.get === "function" && typeof window.storage.set === "function";
 
-  const SESSION_KEY = "session:current";
-
   function storageMode(){
     return firebaseReady ? "firebase" : (hasCloudStorage ? "claude-cloud" : "localStorage (không đồng bộ thiết bị khác)");
   }
   function fsDocId(key){ return key.replace(/[\/]/g, "__"); }
 
   async function storeGet(key, shared){
-    // Session đăng nhập luôn là dữ liệu RIÊNG của trình duyệt này —
-    // không bao giờ đọc từ Firestore/kho dùng chung, kể cả khi
-    // Firebase đã bật, để tránh lộ tài khoản người khác.
-    if(key === SESSION_KEY){
-      try {
-        const val = localStorage.getItem(key);
-        return val ? JSON.parse(val) : null;
-      } catch(e){ return null; }
-    }
     if(firebaseReady){
       try {
         const doc = await fsDb.collection("thien_kv").doc(fsDocId(key)).get();
@@ -739,13 +722,6 @@
     } catch(e) { return null; }
   }
   async function storeSet(key, value, shared){
-    // Xem giải thích ở storeGet — session không bao giờ đi lên cloud dùng chung.
-    if(key === SESSION_KEY){
-      try {
-        localStorage.setItem(key, JSON.stringify(value));
-        return { key, value, shared: false };
-      } catch(e){ console.error("storage set failed", e); return null; }
-    }
     if(firebaseReady){
       try {
         await fsDb.collection("thien_kv").doc(fsDocId(key)).set({ value: JSON.stringify(value) });
@@ -900,7 +876,7 @@
           btn.disabled = false; btn.textContent = prevLabel;
           return;
         }
-        await storeSet(SESSION_KEY, { username: uname }, false);
+        await storeSet("session:current", { username: uname }, false);
         currentUser = uname;
         showLoader();
         setTimeout(() => { enterApp(); hideLoader(); btn.disabled = false; btn.textContent = prevLabel; }, 1000);
@@ -915,7 +891,7 @@
           btn.disabled = false; btn.textContent = prevLabel;
           return;
         }
-        await storeSet(SESSION_KEY, { username: existing.username }, false);
+        await storeSet("session:current", { username: existing.username }, false);
         currentUser = existing.username;
         showLoader();
         setTimeout(() => { enterApp(); hideLoader(); btn.disabled = false; btn.textContent = prevLabel; }, 1000);
@@ -930,7 +906,7 @@
   $("btnLogout").addEventListener("click", async () => {
     const sure = await showConfirm("Đăng xuất?", "Bạn có chắc chắn muốn đăng xuất khỏi tài khoản \"" + (currentUser || "") + "\" không?", "Đăng xuất");
     if(!sure) return;
-    await storeSet(SESSION_KEY, { username: null }, false);
+    await storeSet("session:current", { username: null }, false);
     currentUser = null;
     stopEverything();
     resetBgVisual();
@@ -1500,7 +1476,7 @@
     const modeLabel = $("storageModeLabel");
     if(modeLabel) modeLabel.textContent = "Lưu trữ: " + storageMode();
     setTimeout(async () => {
-      const session = await storeGet(SESSION_KEY, false);
+      const session = await storeGet("session:current", false);
       if(session && session.username){
         const acc = await storeGet("account:" + session.username.toLowerCase(), true);
         if(acc){ currentUser = acc.username; await enterApp(); hideLoader(); return; }
