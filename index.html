@@ -54,7 +54,9 @@
   button{font-family:inherit; touch-action:manipulation; -webkit-tap-highlight-color:transparent;}
   a{touch-action:manipulation;}
   ::selection{background:var(--blue-glow); color: var(--blue-neon);}
-  
+  /* Only apply hover effects on devices that actually support hovering
+     (mouse/trackpad). Prevents buttons/rows staying visually "stuck" in
+     the hover state after a tap on touch screens. */
   @media (hover:hover) and (pointer:fine){
     .hoverable-scope{ }
   }
@@ -1337,7 +1339,7 @@
   window.onYouTubeIframeAPIReady = function(){
     ytPlayer = new YT.Player("ytPlayerDiv", {
       height: "1", width: "1",
-      playerVars: { autoplay:0, controls:0, disablekb:1, modestbranding:1, rel:0, iv_load_policy:3 },
+      playerVars: { autoplay:0, controls:0, disablekb:1, modestbranding:1, rel:0, iv_load_policy:3, playsinline:1 },
       events: {
         onReady: () => { ytReady = true; },
         onStateChange: onYtStateChange
@@ -1684,6 +1686,30 @@
   if(isIOS && !isStandalone){
     $("btnInstallApp").style.display = "inline-block";
   }
+
+  // ===================== Tự hồi phục khi quay lại app =====================
+  // Trên di động, hệ điều hành/trình duyệt đôi khi tự tạm dừng video/audio
+  // đang nhúng (YouTube, Spotify) khi khóa máy hoặc chuyển sang app khác
+  // trong thời gian dài, dù trang web không hề ra lệnh dừng. Đây là hành vi
+  // của hệ điều hành, không thể ngăn hoàn toàn bằng web — nhưng ta có thể
+  // phát hiện và tự phát lại ngay khi người dùng quay lại app, thay vì để
+  // họ thấy nhạc im lặng và phải tự bấm play lại.
+  document.addEventListener("visibilitychange", () => {
+    if(document.visibilityState !== "visible") return;
+    if(!isPlaying) return;
+    setTimeout(() => {
+      const tracks = getActiveTracks();
+      const track = tracks[currentIndex];
+      if(!track) return;
+      if(track.type === "youtube" && ytReady && ytPlayer && ytPlayer.getPlayerState){
+        const state = ytPlayer.getPlayerState();
+        if(state === YT.PlayerState.PAUSED && ytPlayer.playVideo) ytPlayer.playVideo();
+      } else if(track.type === "spotify" && spReady && spController){
+        if(spController.resume) spController.resume();
+        else if(spController.play) spController.play();
+      }
+    }, 300);
+  });
 
   function boot(){
     const modeLabel = $("storageModeLabel");
